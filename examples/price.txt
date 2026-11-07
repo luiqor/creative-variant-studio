@@ -1,0 +1,6 @@
+Fictional example, not real SockLock data
+Hook: Five pairs of socks that stay paired, for $29.
+Problem: You keep buying new socks because the old ones lose their match.
+Demo: The cuff magnet snaps two socks together, then a price tag reads $29.
+On-screen text: "5 pairs. $29. No strays."
+CTA: Take the quiz and claim your 5 pairs for $29.
