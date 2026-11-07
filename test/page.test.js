@@ -15,11 +15,13 @@ test('the page has the script input, error area and loads its ES modules from th
   server.close();
 
   assert.match(html, /<textarea id="script"/);
+  assert.match(html, /<button id="new-script"/);
   assert.match(html, /id="error"/);
   assert.match(html, /id="cards"/);
   assert.match(html, /<script type="module" src="\/js\/main\.js">/);
   assert.match(main.headers.get('content-type'), /javascript/);
   assert.equal(stylesheet.status, 200);
-  assert.ok(modules.length >= 3);
+  assert.ok(modules.length >= 5);
+  assert.ok(mainSource.includes("'./session.js'"));
   assert.ok(modules.every((res) => res.status === 200));
 });
