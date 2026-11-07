@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../public/ae/duplicate-from-csv.jsx', import.meta.url), 'utf8').replace(/^#target.*\n/, '');
+const source = readFileSync(new URL('../public/ae/duplicate-from-csv.jsx', import.meta.url), 'utf8').replace(/^#target.*\r?\n/, '');
 const script = vm.createContext({ app: { project: null }, alert: () => {} });
 vm.runInContext(source, script);
 
