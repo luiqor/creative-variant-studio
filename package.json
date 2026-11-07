@@ -1,5 +1,5 @@
 {
-  "name": "creative-ideas-pitcher",
+  "name": "creative-variant-studio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -27,7 +27,7 @@
   "main": "electron/main.js",
   "build": {
     "appId": "com.socklock.idea-generator",
-    "productName": "Idea Generator",
+    "productName": "Creative Variant Studio",
     "directories": {
       "output": "dist"
     },

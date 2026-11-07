@@ -5,7 +5,7 @@ export function windowOptions({ hidden = false } = {}) {
     minWidth: 900,
     minHeight: 600,
     show: !hidden,
-    title: 'Modification Idea Generator',
+    title: 'Creative Variant Studio',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

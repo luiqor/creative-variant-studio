@@ -39,7 +39,7 @@ function renderGenerate(state) {
 function renderInputs(state) {
   return `<aside class="panel inputs">
     <div class="title-row">
-      <h1>Idea Generator</h1>
+      <h1>Creative Variant Studio</h1>
       <button type="button" class="btn ghost small" data-action="new-script">New script</button>
     </div>
     ${state.token.required ? '<button type="button" class="link change-token" data-action="change-token">Change token</button>' : ''}
