@@ -69,7 +69,8 @@ test('hook and on-screen text keep their word limits, a custom type gets 15', as
   await generateBatch({ client, model: 'm', script: 's', types: ['hook', 'on_screen_text', 'cta'], count: 1 });
   const prompt = promptOf(client.calls[0]);
   assert.match(prompt, /hook[^"\\]*at most 8 words/i);
-  assert.match(prompt, /on-screen text[^"\\]*at most 15 words/i);
+  assert.match(prompt, /on-screen text[^"\\]*at least 10 and at most 15 words/i);
+  assert.doesNotMatch(prompt, /hook[^"\\]*at least/i);
   assert.match(prompt, /cta[^"\\]*at most 15 words/i);
 });
 

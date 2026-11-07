@@ -1,4 +1,4 @@
-import { LIMITS, wordLimit } from './config.js';
+import { LIMITS, WORD_MINIMUMS, wordLimit } from './config.js';
 import { DEFAULT_COUNT, MAX_COUNT, MAX_TYPES, TYPE_NAME } from '../public/js/idea-types.js';
 
 export const TOOL_NAME = 'submit_ideas';
@@ -41,7 +41,9 @@ const DESCRIPTIONS = {
 
 export function ideaLabel(type, limits = LIMITS) {
   const name = DESCRIPTIONS[type] ?? `${type.replace(/_/g, ' ')} ideas`;
-  return `${name}, at most ${wordLimit(type, limits)} words each`;
+  const min = WORD_MINIMUMS[type];
+  const atLeast = min ? `at least ${min} and ` : '';
+  return `${name}, ${atLeast}at most ${wordLimit(type, limits)} words each`;
 }
 
 function buildTool(fields) {

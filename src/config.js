@@ -1,7 +1,7 @@
-import { DEFAULT_WORD_LIMIT, WORD_LIMITS, wordLimit } from '../public/js/idea-types.js';
+import { DEFAULT_WORD_LIMIT, WORD_LIMITS, WORD_MINIMUMS, wordLimit } from '../public/js/idea-types.js';
 
 export const LIMITS = WORD_LIMITS;
-export { DEFAULT_WORD_LIMIT, wordLimit };
+export { DEFAULT_WORD_LIMIT, WORD_MINIMUMS, wordLimit };
 
 export function loadConfig(env) {
   const apiKey = (env.GEMINI_API_KEY ?? '').trim();
