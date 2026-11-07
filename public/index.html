@@ -4,9 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Modification Idea Generator</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <h1>Modification Idea Generator</h1>
-  <button id="generate" type="button" disabled>Generate</button>
+  <label for="script">Winning script</label>
+  <textarea id="script" rows="10" placeholder="Paste the winning script here"></textarea>
+  <button id="generate" type="button">Generate</button>
+  <p id="error" class="error" role="alert" hidden></p>
+  <main id="cards"></main>
+  <script type="module" src="/js/main.js"></script>
 </body>
 </html>
