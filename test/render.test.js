@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderWorkspace } from '../public/js/render.js';
-import { initialState, addType, applyBatch, toggleType, keepIdea, rejectIdea } from '../public/js/workspace.js';
+import { initialState, addType, applyBatch, toggleType, keepIdea, rejectIdea, setPreview } from '../public/js/workspace.js';
 
 const ready = { ...initialState(), script: 'Hook: hi' };
 const generateButton = (html) => html.match(/<button[^>]*data-action="generate"[^>]*>[^<]*<\/button>/)[0];
@@ -129,4 +129,34 @@ test('kept items are draggable and carry their type so they can only be dropped 
   assert.match(html, new RegExp(`<li class="kept-item" draggable="true" data-idea-id="${id}" data-type="hook"`));
   assert.match(html, /<li class="kept-item" draggable="true" data-idea-id="[^"]+" data-type="on_screen_text"/);
   assert.doesNotMatch(section(html, /<main class="review">[\s\S]*<\/main>/), /draggable/);
+});
+
+test('the preview pane shows a hint before anything is pointed at', () => {
+  const html = renderWorkspace(batch());
+  assert.match(section(html, /<section class="preview" data-preview>[\s\S]*?<\/section>/), /Hover an idea to preview it/);
+});
+
+test('the preview pane shows the pointed-at idea in a 9:16 frame, escaped, with its type', () => {
+  const withIdea = applyBatch(batch(), { hook: ['Lost <b>sock</b>?'] });
+  const state = setPreview(withIdea, idOf(withIdea, 'Lost <b>sock</b>?'));
+  const html = renderWorkspace(state);
+  const preview = section(html, /<section class="preview" data-preview>[\s\S]*?<\/section>/);
+  assert.match(preview, /class="frame" data-type="hook"/);
+  assert.match(preview, /Lost &lt;b&gt;sock&lt;\/b&gt;\?/);
+  assert.doesNotMatch(preview, /class="warning"/);
+});
+
+test('the preview pane warns when the idea is over its length limit', () => {
+  const long = Array.from({ length: 9 }, (_, i) => `w${i}`).join(' ');
+  const start = applyBatch(ready, { on_screen_text: [long] });
+  const html = renderWorkspace(setPreview(start, start.ideas[0].id));
+  assert.match(html, /class="warning" role="alert">9 words, over the 8-word limit/);
+});
+
+test('review rows and kept items can be pointed at', () => {
+  const start = batch();
+  const kept = keepIdea(start, idOf(start, 'H1'));
+  const html = renderWorkspace(kept);
+  assert.match(html, new RegExp(`<li class="idea" data-idea-id="${idOf(start, 'H2')}"`));
+  assert.match(html, new RegExp(`<li class="kept-item"[^>]*data-idea-id="${idOf(start, 'H1')}"`));
 });

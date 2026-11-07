@@ -1,4 +1,12 @@
-import { canGenerate, groupIdeas, keptLists, rejectedIdeas, typeLabel } from './workspace.js';
+import {
+  canGenerate,
+  groupIdeas,
+  keptLists,
+  previewIdea,
+  previewWarning,
+  rejectedIdeas,
+  typeLabel,
+} from './workspace.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
@@ -87,16 +95,25 @@ function renderKeptItem(idea) {
   return `<li class="kept-item" draggable="true" data-idea-id="${id}" data-type="${type}"><span class="grip" aria-hidden="true">⋮⋮</span><span class="kept-text">${escapeHtml(idea.text)}</span><button type="button" class="icon" data-action="unkeep" data-id="${id}" title="Remove from kept" aria-label="Remove from kept">✕</button></li>`;
 }
 
+export function renderPreviewBody(state) {
+  const idea = previewIdea(state);
+  if (!idea) return '<div class="frame empty"><p>Hover an idea to preview it</p></div>';
+  const warning = previewWarning(idea);
+  const note = warning ? `<p class="warning" role="alert">${escapeHtml(warning)}</p>` : '';
+  return `<div class="frame" data-type="${escapeHtml(idea.type)}"><div class="safe-zone"><p class="frame-text">${escapeHtml(idea.text)}</p></div></div>${note}`;
+}
+
 function renderKept(state) {
+  const preview = `<section class="preview" data-preview>${renderPreviewBody(state)}</section>`;
   const lists = keptLists(state);
-  if (lists.length === 0) return '<aside class="panel kept"><p class="hint">Kept ideas appear here.</p></aside>';
+  if (lists.length === 0) return `<aside class="panel kept">${preview}<p class="hint">Kept ideas appear here.</p></aside>`;
   const groups = lists
     .map(({ type, label, items }) => {
       const body = items.length > 0 ? items.map(renderKeptItem).join('') : '<li class="empty-note">Nothing kept yet</li>';
       return `<section class="kept-group" data-type="${escapeHtml(type)}"><h3>${escapeHtml(label)} <span class="count">${items.length}</span></h3><ol class="kept-list">${body}</ol></section>`;
     })
     .join('');
-  return `<aside class="panel kept"><h2>Kept</h2>${groups}</aside>`;
+  return `<aside class="panel kept">${preview}<h2>Kept</h2>${groups}</aside>`;
 }
 
 function renderError(state) {

@@ -6,7 +6,9 @@ import {
   TYPE_NAME,
   normaliseTypeName,
   typeLabel,
+  wordLimit,
 } from './idea-types.js';
+import { fitsSafeZone } from './safe-zone.js';
 
 export { typeLabel };
 
@@ -21,6 +23,7 @@ export function initialState() {
     count: DEFAULT_COUNT,
     ideas: [],
     kept: {},
+    previewId: null,
     loading: false,
     error: '',
   };
@@ -139,4 +142,21 @@ export function dropIndex(list, id, targetId, after) {
   if (from < 0 || at < 0 || id === targetId) return null;
   const insert = after ? at + 1 : at;
   return from < insert ? insert - 1 : insert;
+}
+
+export function setPreview(state, id) {
+  if (state.previewId === id) return state;
+  return { ...state, previewId: id };
+}
+
+export function previewIdea(state) {
+  return findIdea(state, state.previewId);
+}
+
+export function previewWarning(idea) {
+  const count = idea.text.split(/\s+/).filter(Boolean).length;
+  const limit = wordLimit(idea.type);
+  if (count > limit) return `${count} words, over the ${limit}-word limit`;
+  if (!fitsSafeZone(idea.text)) return 'Text may not fit the safe zone';
+  return null;
 }

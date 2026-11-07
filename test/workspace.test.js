@@ -18,6 +18,9 @@ import {
   rejectedIdeas,
   moveKept,
   dropIndex,
+  setPreview,
+  previewIdea,
+  previewWarning,
 } from '../public/js/workspace.js';
 
 const withScript = (state, script = 'Hook: hi') => ({ ...state, script });
@@ -217,4 +220,36 @@ test('dropIndex turns "drop before or after a target" into the final position', 
   assert.equal(dropIndex(list, 'a', 'a', true), null);
   assert.equal(dropIndex(list, 'a', 'zzz', true), null);
   assert.equal(dropIndex(list, 'zzz', 'a', true), null);
+});
+
+const words = (n) => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
+const ideaOf = (type, text) => ({ id: 'x', type, text, status: 'new' });
+
+test('the preview shows the idea that was last pointed at, or nothing before that', () => {
+  const state = generated();
+  assert.equal(previewIdea(state), null);
+  const pointed = setPreview(state, idOf(state, 'B'));
+  assert.equal(previewIdea(pointed).text, 'B');
+  assert.equal(previewIdea(setPreview(state, 'nope')), null);
+});
+
+test('pointing at the same idea again returns the same state', () => {
+  const pointed = setPreview(generated(), idOf(generated(), 'A'));
+  assert.equal(setPreview(pointed, pointed.previewId), pointed);
+});
+
+test('an idea within its limits has no warning', () => {
+  assert.equal(previewWarning(ideaOf('hook', words(15))), null);
+  assert.equal(previewWarning(ideaOf('on_screen_text', words(8))), null);
+  assert.equal(previewWarning(ideaOf('cta', words(15))), null);
+});
+
+test('an idea over the limit for its type warns, naming the limit', () => {
+  assert.match(previewWarning(ideaOf('hook', words(16))), /16 words.*15-word limit/);
+  assert.match(previewWarning(ideaOf('on_screen_text', words(9))), /9 words.*8-word limit/);
+  assert.match(previewWarning(ideaOf('cta', words(16))), /16 words.*15-word limit/);
+});
+
+test('an idea that does not fit the frame warns even when within the word limit', () => {
+  assert.match(previewWarning(ideaOf('hook', 'Unbelievablyunmatchable')), /may not fit/i);
 });

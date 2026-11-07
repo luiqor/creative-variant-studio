@@ -1,4 +1,4 @@
-import { renderWorkspace } from './render.js';
+import { renderPreviewBody, renderWorkspace } from './render.js';
 import { requestBatch } from './api.js';
 import {
   addType,
@@ -12,6 +12,7 @@ import {
   rejectIdea,
   restoreIdea,
   setCount,
+  setPreview,
   toggleType,
   unkeepIdea,
 } from './workspace.js';
@@ -61,6 +62,13 @@ root.addEventListener('input', (event) => {
   state = { ...state, [field]: event.target.value };
   const button = root.querySelector('[data-action="generate"]');
   button.disabled = !canGenerate(state);
+});
+
+root.addEventListener('mouseover', (event) => {
+  const el = event.target.closest('[data-idea-id]');
+  if (!el || el.dataset.ideaId === state.previewId) return;
+  state = setPreview(state, el.dataset.ideaId);
+  root.querySelector('[data-preview]').innerHTML = renderPreviewBody(state);
 });
 
 const drag = { current: null };

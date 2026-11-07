@@ -113,6 +113,22 @@ textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 
 .icon.good:hover { background: #dcfce7; border-color: #86efac; color: #15803d; }
 .icon.bad:hover { background: #fee2e2; border-color: #fca5a5; color: var(--bad); }
 
+.preview { width: 160px; margin: 0 auto 22px; }
+.frame {
+  aspect-ratio: 9 / 16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14% 10%;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #273449, #0f172a);
+  color: #fff;
+}
+.frame.empty { background: #eceef3; color: var(--muted); text-align: center; font-size: 13px; }
+.safe-zone { width: 100%; border: 1px dashed rgba(255, 255, 255, .28); border-radius: 6px; padding: 8px; }
+.frame-text { text-align: center; font-size: 14px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.warning { color: var(--bad); font-size: 12px; font-weight: 600; text-align: center; margin-top: 8px; }
+
 .kept h2 { margin-bottom: 14px; }
 .kept h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 14px; }
 .kept .count { color: var(--muted); font-weight: 400; }

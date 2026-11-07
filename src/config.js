@@ -1,11 +1,7 @@
-export const LIMITS = Object.freeze({
-  hook: 15,
-  on_screen_text: 8,
-});
+import { DEFAULT_WORD_LIMIT, WORD_LIMITS, wordLimit } from '../public/js/idea-types.js';
 
-export const DEFAULT_WORD_LIMIT = 15;
-
-export const wordLimit = (type, limits = LIMITS) => limits[type] ?? DEFAULT_WORD_LIMIT;
+export const LIMITS = WORD_LIMITS;
+export { DEFAULT_WORD_LIMIT, wordLimit };
 
 export function loadConfig(env) {
   const apiKey = (env.GEMINI_API_KEY ?? '').trim();
