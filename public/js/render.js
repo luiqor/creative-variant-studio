@@ -19,6 +19,7 @@ function renderActions(card) {
     <button type="button" data-action="keep" data-card-id="${id}">Keep</button>
     <button type="button" data-action="reject" data-card-id="${id}">Reject</button>
     <button type="button" data-action="copy" data-card-id="${id}">Copy</button>
+    <button type="button" data-action="more" data-card-id="${id}">More like this</button>
   </div>
   <div class="reject-tags">${rejectTags}</div>`;
 }

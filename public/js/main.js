@@ -1,6 +1,7 @@
 import { createCards, keepCard, rejectCard, restoreCard, toggleLikedTag, setComment } from './cards.js';
 import { renderCards } from './render.js';
 import { requestBatch } from './api.js';
+import { requestMore, createMoreCards } from './more-like-this.js';
 import { createSession } from './session.js';
 import { setupExport } from './export-ui.js';
 import { trackAction, trackExport } from './action-events.js';
@@ -43,6 +44,21 @@ const ACTIONS = {
   like: (cards, id, tag) => toggleLikedTag(cards, id, tag),
 };
 
+function moreLikeThis(cardId) {
+  showError('');
+  state.loading = true;
+  render();
+  requestMore(state.cards, cardId)
+    .then((batch) => {
+      state.cards = createMoreCards(state.cards, batch);
+    })
+    .catch((err) => showError(err.message))
+    .finally(() => {
+      state.loading = false;
+      render();
+    });
+}
+
 cardsRoot.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
@@ -53,6 +69,10 @@ cardsRoot.addEventListener('click', (event) => {
     return;
   }
   trackAction(state.cards, cardId, action, tag);
+  if (action === 'more') {
+    moreLikeThis(cardId);
+    return;
+  }
   state.cards = ACTIONS[action](state.cards, cardId, tag);
   render();
 });

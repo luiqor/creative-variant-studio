@@ -31,7 +31,7 @@ test('each card carries its id and sits in a 9:16 frame', () => {
 
 test('a card has Keep, Reject and Copy actions, plus reject tag options', () => {
   const html = renderCards([card('hook', 'Hi', 'abc')]);
-  for (const action of ['keep', 'reject', 'copy']) {
+  for (const action of ['keep', 'reject', 'copy', 'more']) {
     assert.ok(html.includes(`data-action="${action}" data-card-id="abc"`), action);
   }
   assert.ok(html.includes('data-action="reject" data-card-id="abc" data-tag="too_long"'));
