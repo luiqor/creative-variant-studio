@@ -1,8 +1,8 @@
-export async function requestBatch(script, fetchFn = fetch) {
+export async function requestBatch(request, fetchFn = fetch) {
   const response = await fetchFn('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ script }),
+    body: JSON.stringify(request),
   }).catch(() => {
     throw new Error('Could not reach the server.');
   });

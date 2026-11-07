@@ -1,6 +1,6 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
-import { generateBatch, GenerationError } from './generation.js';
+import { generateBatch, GenerationError, parseGenerateRequest } from './generation.js';
 import { setupEvents } from './events-route.js';
 import { generateMore, moreLikeThisParams } from './more-like-this.js';
 
@@ -23,9 +23,9 @@ export function createApp({ client, model, eventsPath } = {}) {
   app.use(express.static(fileURLToPath(new URL('../public', import.meta.url))));
 
   app.post('/api/generate', (req, res) => {
-    const script = typeof req.body?.script === 'string' ? req.body.script.trim() : '';
-    if (!script) return res.status(400).json({ error: 'Paste a winning script first.' });
-    return respondWithBatch(res, events, () => generateBatch({ client, model, script }));
+    const { value, error } = parseGenerateRequest(req.body);
+    if (error) return res.status(400).json({ error });
+    return respondWithBatch(res, events, () => generateBatch({ client, model, ...value }));
   });
 
   app.post('/api/more-like-this', (req, res) => {

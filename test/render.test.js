@@ -1,73 +1,63 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderCards } from '../public/js/render.js';
+import { renderWorkspace } from '../public/js/render.js';
+import { initialState, addType, applyBatch, toggleType } from '../public/js/workspace.js';
 
-const card = (type, text, id = text) => ({ id, type, text, state: 'new', likedTags: [], rejectTag: null, comment: '' });
+const ready = { ...initialState(), script: 'Hook: hi' };
+const generateButton = (html) => html.match(/<button[^>]*data-action="generate"[^>]*>[^<]*<\/button>/)[0];
 
-test('cards are grouped under a heading per type, hooks first', () => {
-  const html = renderCards([card('on_screen_text', 'T1'), card('hook', 'H1')]);
-  assert.ok(html.indexOf('Hooks') < html.indexOf('H1'));
-  assert.ok(html.indexOf('H1') < html.indexOf('On-screen text'));
-  assert.ok(html.indexOf('On-screen text') < html.indexOf('T1'));
+test('shows the script and the note in their fields, escaped', () => {
+  const html = renderWorkspace({ ...ready, script: 'a <b> & "c"', note: '<i>x</i>' });
+  assert.match(html, /<textarea[^>]*data-field="script"[^>]*>a &lt;b&gt; &amp; &quot;c&quot;<\/textarea>/);
+  assert.match(html, /data-field="note"[^>]*value="&lt;i&gt;x&lt;\/i&gt;"/);
 });
 
-test('card text is HTML-escaped', () => {
-  const html = renderCards([card('hook', '<img src=x onerror=alert(1)>')]);
-  assert.ok(!html.includes('<img'));
-  assert.ok(html.includes('&lt;img'));
+test('shows every idea type as a chip, pressed when chosen', () => {
+  const state = toggleType(addType(ready, 'cta'), 'hook');
+  const html = renderWorkspace(state);
+  assert.match(html, /data-action="toggle-type" data-type="hook" aria-pressed="false"[^>]*>Hook</);
+  assert.match(html, /data-action="toggle-type" data-type="on_screen_text" aria-pressed="true"[^>]*>On-screen text</);
+  assert.match(html, /data-action="toggle-type" data-type="cta" aria-pressed="true"[^>]*>CTA</);
 });
 
-test('only overflowing cards show the safe-zone warning', () => {
-  const long = 'supercalifragilisticexpialidocious';
-  const html = renderCards([card('hook', long), card('hook', 'Short one')]);
-  assert.equal(html.split('Text may not fit the safe zone').length - 1, 1);
+test('shows the count per type', () => {
+  assert.match(renderWorkspace({ ...ready, count: 7 }), /<output[^>]*data-count[^>]*>7<\/output>/);
 });
 
-test('each card carries its id and sits in a 9:16 frame', () => {
-  const html = renderCards([card('hook', 'Hi', 'abc')]);
-  assert.ok(html.includes('data-card-id="abc"'));
-  assert.ok(html.includes('class="frame"'));
+test('Generate is enabled when the script and a type are present', () => {
+  assert.doesNotMatch(generateButton(renderWorkspace(ready)), /disabled/);
+  assert.match(generateButton(renderWorkspace(ready)), />Generate</);
 });
 
-test('a card has Keep, Reject and Copy actions, plus reject tag options', () => {
-  const html = renderCards([card('hook', 'Hi', 'abc')]);
-  for (const action of ['keep', 'reject', 'copy', 'more']) {
-    assert.ok(html.includes(`data-action="${action}" data-card-id="abc"`), action);
-  }
-  assert.ok(html.includes('data-action="reject" data-card-id="abc" data-tag="too_long"'));
+test('Generate is disabled without a script, without a chosen type and while loading', () => {
+  assert.match(generateButton(renderWorkspace(initialState())), /disabled/);
+  const noTypes = toggleType(toggleType(ready, 'hook'), 'on_screen_text');
+  assert.match(generateButton(renderWorkspace(noTypes)), /disabled/);
+  const loading = generateButton(renderWorkspace({ ...ready, loading: true }));
+  assert.match(loading, /disabled/);
+  assert.match(loading, />Generating/);
 });
 
-test('liked tags show pressed state and the comment box shows the escaped comment', () => {
-  const html = renderCards([{ ...card('hook', 'Hi', 'abc'), likedTags: ['humor'], comment: 'a "b" <i>' }]);
-  assert.ok(html.includes('data-action="like" data-card-id="abc" data-tag="humor" aria-pressed="true"'));
-  assert.ok(html.includes('data-action="like" data-card-id="abc" data-tag="short" aria-pressed="false"'));
-  assert.ok(html.includes('data-action="comment" data-card-id="abc"'));
-  assert.ok(html.includes('a &quot;b&quot; &lt;i&gt;</textarea>'));
+test('shows a hint instead of ideas before the first Generate', () => {
+  const html = renderWorkspace(ready);
+  assert.match(html, /No ideas yet/);
+  assert.doesNotMatch(html, /class="idea"/);
 });
 
-test('rejected cards leave the groups and collapse into a section with Restore', () => {
-  const html = renderCards([card('hook', 'Live'), { ...card('hook', 'Gone'), state: 'rejected', rejectTag: 'too_long' }]);
-  const [main, rejected] = html.split('<details class="rejected">');
-  assert.ok(main.includes('Live') && !main.includes('Gone'));
-  assert.ok(rejected.includes('Gone'));
-  assert.ok(rejected.includes('data-action="restore" data-card-id="Gone"'));
-  assert.ok(rejected.includes('Too long'));
-  assert.ok(!html.includes('<details class="rejected" open'));
+test('shows ideas as rows grouped under their idea type, escaped', () => {
+  const state = applyBatch(ready, { hook: ['Lost a <sock>?', 'Again?'], on_screen_text: ['Never lose one'] });
+  const html = renderWorkspace(state);
+  const hookGroup = html.match(/<section class="group" data-type="hook">[\s\S]*?<\/section>/)[0];
+  const textGroup = html.match(/<section class="group" data-type="on_screen_text">[\s\S]*?<\/section>/)[0];
+  assert.match(hookGroup, /<h2>Hook<\/h2>/);
+  assert.match(hookGroup, /Lost a &lt;sock&gt;\?/);
+  assert.equal(hookGroup.match(/class="idea"/g).length, 2);
+  assert.match(textGroup, /<h2>On-screen text<\/h2>/);
+  assert.equal(textGroup.match(/class="idea"/g).length, 1);
+  assert.doesNotMatch(html, /No ideas yet/);
 });
 
-test('kept cards are listed in a Kept section', () => {
-  const html = renderCards([card('hook', 'Mine'), { ...card('hook', 'Keeper'), state: 'kept' }]);
-  const kept = html.slice(html.indexOf('<section class="kept">'));
-  assert.ok(kept.includes('Keeper') && !kept.includes('Mine'));
-});
-
-test('More like this buttons are disabled while a request is loading, enabled otherwise', () => {
-  const cards = [card('hook', 'H1')];
-  const more = (html) => html.match(/<button[^>]*data-action="more"[^>]*>/)[0];
-  assert.ok(!more(renderCards(cards)).includes('disabled'));
-  assert.ok(more(renderCards(cards, { loading: true })).includes('disabled'));
-});
-
-test('no cards renders nothing', () => {
-  assert.equal(renderCards([]), '');
+test('shows the error as an alert only when there is one', () => {
+  assert.match(renderWorkspace({ ...ready, error: 'Could not reach the server.' }), /role="alert"[^>]*>Could not reach the server\./);
+  assert.doesNotMatch(renderWorkspace(ready), /role="alert"/);
 });

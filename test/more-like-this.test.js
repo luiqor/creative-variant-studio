@@ -17,15 +17,15 @@ function recorder(input) {
 }
 
 test('generateMore returns 10 hooks only, with a single-field schema, for a hook card', async () => {
-  const client = recorder({ hooks: ten('h') });
+  const client = recorder({ hook: ten('h') });
   const out = await generateMore({ client, model: 'm', type: 'hook', existingTexts: [] });
-  assert.deepEqual(out, { hooks: ten('h') });
+  assert.deepEqual(out, { hook: ten('h') });
   const schema = client.calls[0].config.tools[0].functionDeclarations[0].parametersJsonSchema;
-  assert.deepEqual(Object.keys(schema.properties), ['hooks']);
+  assert.deepEqual(Object.keys(schema.properties), ['hook']);
 });
 
 test('generateMore sends the liked tags and comment as guidance', async () => {
-  const client = recorder({ hooks: ten('h') });
+  const client = recorder({ hook: ten('h') });
   await generateMore({
     client,
     model: 'm',
@@ -41,7 +41,7 @@ test('generateMore sends the liked tags and comment as guidance', async () => {
 });
 
 test('generateMore sends reject tags of rejected cards as negative hints', async () => {
-  const client = recorder({ hooks: ten('h') });
+  const client = recorder({ hook: ten('h') });
   await generateMore({
     client,
     model: 'm',
@@ -56,7 +56,7 @@ test('generateMore sends reject tags of rejected cards as negative hints', async
 });
 
 test('generateMore sends all existing texts as do-not-repeat', async () => {
-  const client = recorder({ on_screen_texts: ten('t') });
+  const client = recorder({ on_screen_text: ten('t') });
   await generateMore({
     client,
     model: 'm',

@@ -14,7 +14,7 @@ export function setupEvents(app, eventsPath) {
 
   return {
     recordGenerated(batch) {
-      const count = (batch.hooks?.length ?? 0) + (batch.on_screen_texts?.length ?? 0);
+      const count = Object.values(batch).reduce((sum, ideas) => sum + ideas.length, 0);
       try {
         log?.append('generated', { count });
       } catch {

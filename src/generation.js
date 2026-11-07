@@ -1,16 +1,41 @@
-import { LIMITS } from './config.js';
+import { LIMITS, wordLimit } from './config.js';
+import { DEFAULT_COUNT, MAX_COUNT, MAX_TYPES, TYPE_NAME } from '../public/js/idea-types.js';
 
 export const TOOL_NAME = 'submit_ideas';
-export const BATCH_SIZE = 10;
 export const MAX_ATTEMPTS = 2; // first try + one retry
+
+export const MAX_NOTE_LENGTH = 500;
 
 export class GenerationError extends Error {}
 
-export const FIELD_LABELS = {
-  hooks: (limits) => `hooks (opening lines, at most ${limits.hookMaxWords} words each)`,
-  on_screen_texts: (limits) =>
-    `on-screen texts (overlay lines, at most ${limits.onScreenTextMaxWords} words each)`,
+export function parseGenerateRequest(body) {
+  const script = typeof body?.script === 'string' ? body.script.trim() : '';
+  if (!script) return { error: 'Paste a winning script first.' };
+  const types = body?.types;
+  const validTypes =
+    Array.isArray(types) &&
+    types.length > 0 &&
+    types.length <= MAX_TYPES &&
+    types.every((type) => typeof type === 'string' && TYPE_NAME.test(type)) &&
+    new Set(types).size === types.length;
+  if (!validTypes) return { error: `Choose between 1 and ${MAX_TYPES} different idea types.` };
+  const count = body.count ?? DEFAULT_COUNT;
+  if (!Number.isInteger(count) || count < 1 || count > MAX_COUNT) {
+    return { error: `The number of ideas must be a whole number from 1 to ${MAX_COUNT}.` };
+  }
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, MAX_NOTE_LENGTH) : '';
+  return { value: { script, types, count, note } };
+}
+
+const DESCRIPTIONS = {
+  hook: 'hooks (opening lines)',
+  on_screen_text: 'on-screen texts (overlay lines)',
 };
+
+export function ideaLabel(type, limits = LIMITS) {
+  const name = DESCRIPTIONS[type] ?? `${type.replace(/_/g, ' ')} ideas`;
+  return `${name}, at most ${wordLimit(type, limits)} words each`;
+}
 
 function buildTool(fields) {
   return {
@@ -48,9 +73,8 @@ function validate(input, fields) {
 }
 
 /**
- * Shared function-calling + retry core. Reused by "More like this":
- * pass fewer `fields` (e.g. { hooks: 10 }) and put extra guidance /
- * do-not-repeat / negative hints into `userPrompt`.
+ * Shared function-calling + retry core, reused by "More like this".
+ * `fields` maps an idea type to the number of ideas wanted.
  * The server only ever reads the function call args, never prose.
  * Array sizes are not in the schema (Gemini docs advise stating bounds in the prompt
  * and checking them in code); `validate` enforces the counts.
@@ -64,7 +88,7 @@ export async function requestIdeas({ client, model, system, userPrompt, fields }
         contents: userPrompt,
         config: {
           systemInstruction: system,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 8192,
           tools: [tool],
           toolConfig: {
             functionCallingConfig: { mode: 'ANY', allowedFunctionNames: [TOOL_NAME] },
@@ -79,23 +103,37 @@ export async function requestIdeas({ client, model, system, userPrompt, fields }
   throw new GenerationError('The model returned an invalid response twice. Please try again.');
 }
 
-export function buildSystemPrompt(limits = LIMITS) {
+export function buildSystemPrompt(types, limits = LIMITS) {
   return [
     'You are a creative assistant for motion designers making modifications of a winning video ad.',
-    'A modification changes only the opening hook and the on-screen text; the rest of the video stays the same.',
-    'Do not change the CTA, the problem, or the demo. Write all ideas in English (US market).',
+    'A modification changes some parts of the ad and keeps the rest.',
+    'Write ideas only for the requested idea types and do not rewrite other parts of the script. Write all ideas in English (US market).',
     'Length limits:',
-    `- each hook: at most ${limits.hookMaxWords} words`,
-    `- each on-screen text: at most ${limits.onScreenTextMaxWords} words`,
+    ...types.map((type) => `- each ${ideaLabel(type, limits)}`),
     `Always answer by calling the ${TOOL_NAME} function.`,
   ].join('\n');
 }
 
-export async function generateBatch({ client, model, script, limits = LIMITS }) {
-  const fields = { hooks: BATCH_SIZE, on_screen_texts: BATCH_SIZE };
-  const userPrompt = [
+export async function generateBatch({
+  client,
+  model,
+  script,
+  types,
+  count = DEFAULT_COUNT,
+  note = '',
+  limits = LIMITS,
+}) {
+  const fields = Object.fromEntries(types.map((type) => [type, count]));
+  const sections = [
     `Winning script:\n"""\n${script}\n"""`,
-    `Produce ${BATCH_SIZE} new ${FIELD_LABELS.hooks(limits)} and ${BATCH_SIZE} new ${FIELD_LABELS.on_screen_texts(limits)}.`,
-  ].join('\n\n');
-  return requestIdeas({ client, model, system: buildSystemPrompt(limits), userPrompt, fields });
+    `Produce:\n${types.map((type) => `- ${count} new ${ideaLabel(type, limits)}`).join('\n')}`,
+  ];
+  if (note.trim()) sections.push(`Designer's note: ${note.trim()}`);
+  return requestIdeas({
+    client,
+    model,
+    system: buildSystemPrompt(types, limits),
+    userPrompt: sections.join('\n\n'),
+    fields,
+  });
 }

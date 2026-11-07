@@ -42,11 +42,11 @@ test('a successful /api/generate logs a generated event with the card count; a f
   const stub = (input) => ({ models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: input }] }) } });
   const generate = async (app, script) => {
     const server = app.listen(0);
-    const res = await fetch(`http://localhost:${server.address().port}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ script }) });
+    const res = await fetch(`http://localhost:${server.address().port}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ script, types: ['hook', 'on_screen_text'] }) });
     server.close();
     return res.status;
   };
-  const app = createApp({ client: stub({ hooks: ten('h'), on_screen_texts: ten('t') }), model: 'm', eventsPath: path });
+  const app = createApp({ client: stub({ hook: ten('h'), on_screen_text: ten('t') }), model: 'm', eventsPath: path });
   assert.equal(await generate(app, ' '), 400);
   assert.equal(existsSync(path), false);
   assert.equal(await generate(app, 'Hook: hi'), 200);
@@ -58,7 +58,7 @@ test('a successful /api/generate logs a generated event with the card count; a f
 test('a successful /api/more-like-this also logs a generated event, so its cards count in the denominator', async () => {
   const path = eventsPath();
   const ten = Array.from({ length: 10 }, (_, i) => `h ${i}`);
-  const client = { models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: { hooks: ten } }] }) } };
+  const client = { models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: { hook: ten } }] }) } };
   const server = createApp({ client, model: 'm', eventsPath: path }).listen(0);
   const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cardId: 'c1', cards: [{ id: 'c1', type: 'hook', text: 'x', state: 'new' }] }) });
   server.close();

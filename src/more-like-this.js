@@ -1,18 +1,14 @@
 import { LIMITS } from './config.js';
 // Shared with the browser so tag ids and labels have one source of truth.
 import { tagLabel } from '../public/js/tags.js';
-import { BATCH_SIZE, FIELD_LABELS, buildSystemPrompt, requestIdeas } from './generation.js';
-
-const TYPE_FIELDS = {
-  hook: 'hooks',
-  on_screen_text: 'on_screen_texts',
-};
+import { DEFAULT_COUNT, TYPE_NAME } from '../public/js/idea-types.js';
+import { buildSystemPrompt, ideaLabel, requestIdeas } from './generation.js';
 
 const bullets = (items) => items.map((t) => `- ${t}`).join('\n');
 
 export function moreLikeThisParams(cards, cardId) {
   const chosen = Array.isArray(cards) ? cards.find((c) => c?.id === cardId) : null;
-  if (!chosen || !TYPE_FIELDS[chosen.type]) return null;
+  if (!chosen || typeof chosen.type !== 'string' || !TYPE_NAME.test(chosen.type)) return null;
   return {
     type: chosen.type,
     existingTexts: cards.map((c) => c.text),
@@ -34,10 +30,9 @@ export async function generateMore({
   rejectedFeedback = [],
   limits = LIMITS,
 }) {
-  const field = TYPE_FIELDS[type];
-  const fields = { [field]: BATCH_SIZE };
+  const fields = { [type]: DEFAULT_COUNT };
   const sections = [
-    `Produce ${BATCH_SIZE} new ${FIELD_LABELS[field](limits)}.`,
+    `Produce ${DEFAULT_COUNT} new ${ideaLabel(type, limits)}.`,
     `Do not repeat any of these existing texts:\n${bullets(existingTexts)}`,
   ];
   if (likedTags.length) {
@@ -55,7 +50,7 @@ export async function generateMore({
   return requestIdeas({
     client,
     model,
-    system: buildSystemPrompt(limits),
+    system: buildSystemPrompt([type], limits),
     userPrompt: sections.join('\n\n'),
     fields,
   });

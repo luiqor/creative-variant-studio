@@ -1,9 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateBatch, GenerationError } from '../src/generation.js';
-import { LIMITS } from '../src/config.js';
 
-const ten = (p) => Array.from({ length: 10 }, (_, i) => `${p} ${i}`);
+const list = (prefix, n = 10) => Array.from({ length: n }, (_, i) => `${prefix} ${i}`);
 
 function stubClient(inputs) {
   const calls = [];
@@ -20,51 +19,95 @@ function stubClient(inputs) {
   };
 }
 
-const good = { hooks: ten('hook'), on_screen_texts: ten('text') };
+const promptOf = (call) => JSON.stringify(call.config.systemInstruction) + JSON.stringify(call.contents);
 
-test('valid tool response yields 10 hooks and 10 on-screen texts', async () => {
+test('returns one list of ideas per requested idea type', async () => {
+  const good = { hook: list('hook'), on_screen_text: list('text') };
   const client = stubClient([good]);
-  const batch = await generateBatch({ client, model: 'm', script: 'Hook: hi' });
+  const batch = await generateBatch({
+    client,
+    model: 'm',
+    script: 'Hook: hi',
+    types: ['hook', 'on_screen_text'],
+    count: 10,
+  });
   assert.deepEqual(batch, good);
-  assert.equal(client.calls.length, 1);
   assert.equal(client.calls[0].model, 'm');
-  const { config } = client.calls[0];
-  assert.deepEqual(config.toolConfig.functionCallingConfig, {
+  assert.deepEqual(client.calls[0].config.toolConfig.functionCallingConfig, {
     mode: 'ANY',
     allowedFunctionNames: ['submit_ideas'],
   });
-  const declaration = config.tools[0].functionDeclarations[0];
-  assert.equal(declaration.name, 'submit_ideas');
-  assert.equal(declaration.parametersJsonSchema.properties.hooks.type, 'array');
-  assert.equal(declaration.parametersJsonSchema.properties.on_screen_texts.items.type, 'string');
-  assert.deepEqual(declaration.parametersJsonSchema.required, ['hooks', 'on_screen_texts']);
 });
 
-test('prompt contains the script and the length limits', async () => {
-  const client = stubClient([good]);
-  await generateBatch({ client, model: 'm', script: 'SCRIPT-BODY' });
-  const text = JSON.stringify(client.calls[0].config.systemInstruction) + JSON.stringify(client.calls[0].contents);
-  assert.match(text, /SCRIPT-BODY/);
-  assert.match(text, new RegExp(`${LIMITS.hookMaxWords} words`));
-  assert.match(text, new RegExp(`${LIMITS.onScreenTextMaxWords} words`));
-  assert.match(text, /CTA/);
+test('the model schema has one array per chosen type, including custom types', async () => {
+  const client = stubClient([{ cta: list('cta', 4) }]);
+  await generateBatch({ client, model: 'm', script: 's', types: ['cta'], count: 4 });
+  const schema = client.calls[0].config.tools[0].functionDeclarations[0].parametersJsonSchema;
+  assert.deepEqual(Object.keys(schema.properties), ['cta']);
+  assert.equal(schema.properties.cta.type, 'array');
+  assert.equal(schema.properties.cta.items.type, 'string');
+  assert.deepEqual(schema.required, ['cta']);
 });
 
-test('invalid response is retried once and then succeeds', async () => {
-  const client = stubClient([{ hooks: ['only one'], on_screen_texts: [] }, good]);
-  const batch = await generateBatch({ client, model: 'm', script: 's' });
+test('only the chosen types and count are requested', async () => {
+  const client = stubClient([{ hook: list('h', 3) }]);
+  const batch = await generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 3 });
+  assert.deepEqual(Object.keys(batch), ['hook']);
+  assert.equal(batch.hook.length, 3);
+});
+
+test('a response with the wrong number of ideas is retried once', async () => {
+  const good = { hook: list('h', 5) };
+  const client = stubClient([{ hook: ['only one'] }, good]);
+  const batch = await generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 5 });
   assert.deepEqual(batch, good);
   assert.equal(client.calls.length, 2);
 });
 
-test('second invalid response throws GenerationError', async () => {
+test('hook and on-screen text keep their word limits, a custom type gets 15', async () => {
+  const client = stubClient([{ hook: list('h', 1), on_screen_text: list('t', 1), cta: list('c', 1) }]);
+  await generateBatch({ client, model: 'm', script: 's', types: ['hook', 'on_screen_text', 'cta'], count: 1 });
+  const prompt = promptOf(client.calls[0]);
+  assert.match(prompt, /hook[^"\\]*at most 15 words/i);
+  assert.match(prompt, /on-screen text[^"\\]*at most 8 words/i);
+  assert.match(prompt, /cta[^"\\]*at most 15 words/i);
+});
+
+test('the prompt contains the script and the designer note', async () => {
+  const client = stubClient([{ hook: list('h', 1) }]);
+  await generateBatch({
+    client,
+    model: 'm',
+    script: 'SCRIPT-BODY',
+    types: ['hook'],
+    count: 1,
+    note: 'make it playful',
+  });
+  const prompt = promptOf(client.calls[0]);
+  assert.match(prompt, /SCRIPT-BODY/);
+  assert.match(prompt, /make it playful/);
+});
+
+test('the prompt does not mention a note when none is given', async () => {
+  const client = stubClient([{ hook: list('h', 1) }]);
+  await generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 1 });
+  assert.doesNotMatch(promptOf(client.calls[0]), /note/i);
+});
+
+test('a second invalid response throws GenerationError', async () => {
   const client = stubClient([{ nope: 1 }]);
-  await assert.rejects(generateBatch({ client, model: 'm', script: 's' }), GenerationError);
+  await assert.rejects(
+    generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 2 }),
+    GenerationError,
+  );
   assert.equal(client.calls.length, 2);
 });
 
-test('SDK error is retried once, then reported as GenerationError', async () => {
+test('an SDK error is retried once, then reported as GenerationError', async () => {
   const client = stubClient([new Error('boom')]);
-  await assert.rejects(generateBatch({ client, model: 'm', script: 's' }), GenerationError);
+  await assert.rejects(
+    generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 2 }),
+    GenerationError,
+  );
   assert.equal(client.calls.length, 2);
 });

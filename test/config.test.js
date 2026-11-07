@@ -21,6 +21,6 @@ test('missing API key throws a clear message', () => {
 });
 
 test('limits are readable from the config module', () => {
-  assert.equal(LIMITS.hookMaxWords, 15);
-  assert.equal(LIMITS.onScreenTextMaxWords, 8);
+  assert.equal(LIMITS.hook, 15);
+  assert.equal(LIMITS.on_screen_text, 8);
 });

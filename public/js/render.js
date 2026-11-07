@@ -1,83 +1,68 @@
-import { fitsSafeZone } from './safe-zone.js';
-import { LIKED_TAGS, REJECT_TAGS } from './tags.js';
-
-const GROUPS = [
-  { type: 'hook', title: 'Hooks' },
-  { type: 'on_screen_text', title: 'On-screen text' },
-];
+import { canGenerate, groupIdeas, typeLabel } from './workspace.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 
-function renderActions(card, loading) {
-  const id = escapeHtml(card.id);
-  const rejectTags = REJECT_TAGS.map(
-    (tag) =>
-      `<button type="button" data-action="reject" data-card-id="${id}" data-tag="${tag.id}">${tag.label}</button>`,
-  ).join('');
-  return `<div class="actions">
-    <button type="button" data-action="keep" data-card-id="${id}">Keep</button>
-    <button type="button" data-action="reject" data-card-id="${id}">Reject</button>
-    <button type="button" data-action="copy" data-card-id="${id}">Copy</button>
-    <button type="button" data-action="more" data-card-id="${id}"${loading ? ' disabled' : ''}>More like this</button>
-  </div>
-  <div class="reject-tags">${rejectTags}</div>`;
+function renderTypeChips(state) {
+  const chips = state.types
+    .map(({ name, on }) => {
+      const cls = on ? 'chip on' : 'chip';
+      return `<button type="button" class="${cls}" data-action="toggle-type" data-type="${escapeHtml(name)}" aria-pressed="${on}">${escapeHtml(typeLabel(name))}</button>`;
+    })
+    .join('');
+  return `<div class="chips">${chips}</div>
+    <div class="add-type">
+      <input data-new-type placeholder="Add a type, e.g. CTA" maxlength="24" aria-label="New idea type">
+      <button type="button" class="btn ghost small" data-action="add-type">Add</button>
+    </div>`;
 }
 
-function renderFeedback(card) {
-  const id = escapeHtml(card.id);
-  const tags = LIKED_TAGS.map(
-    (tag) =>
-      `<button type="button" data-action="like" data-card-id="${id}" data-tag="${tag.id}" aria-pressed="${card.likedTags.includes(tag.id)}">${tag.label}</button>`,
-  ).join('');
-  return `<div class="liked-tags">${tags}</div>
-  <textarea data-action="comment" data-card-id="${id}" rows="2" placeholder="Optional comment">${escapeHtml(card.comment)}</textarea>`;
+function renderGenerate(state) {
+  const disabled = canGenerate(state) ? '' : ' disabled';
+  const text = state.loading ? 'Generating…' : 'Generate';
+  return `<button type="button" class="btn primary wide" data-action="generate"${disabled}>${text}</button>`;
 }
 
-function renderCard(card, loading) {
-  const warning = fitsSafeZone(card.text)
-    ? ''
-    : '<p class="warning" role="alert">Text may not fit the safe zone</p>';
-  return `<article class="card" data-card-id="${escapeHtml(card.id)}" data-state="${escapeHtml(card.state)}">
-  <div class="frame"><div class="safe-zone"><p class="card-text">${escapeHtml(card.text)}</p></div></div>
-  ${warning}
-  ${renderActions(card, loading)}
-  ${renderFeedback(card)}
-</article>`;
+function renderInputs(state) {
+  return `<aside class="panel inputs">
+    <h1>Idea Generator</h1>
+    <label class="field-label" for="script">Winning script</label>
+    <textarea id="script" data-field="script" rows="11" placeholder="Paste the winning script here">${escapeHtml(state.script)}</textarea>
+    <span class="field-label">Idea types</span>
+    ${renderTypeChips(state)}
+    <span class="field-label">Ideas per type</span>
+    <div class="stepper">
+      <button type="button" data-action="count-down" aria-label="Fewer ideas">−</button>
+      <output data-count>${state.count}</output>
+      <button type="button" data-action="count-up" aria-label="More ideas">+</button>
+    </div>
+    <label class="field-label" for="note">Note for the model (optional)</label>
+    <input id="note" data-field="note" value="${escapeHtml(state.note)}" placeholder="e.g. keep it playful">
+    <div class="generate">${renderGenerate(state)}</div>
+  </aside>`;
 }
 
-function renderGroups(cards, loading) {
-  return GROUPS.map(({ type, title }) => ({ title, items: cards.filter((card) => card.type === type) }))
-    .filter(({ items }) => items.length > 0)
+function renderIdea(idea) {
+  return `<li class="idea" data-idea-id="${escapeHtml(idea.id)}"><span class="idea-text">${escapeHtml(idea.text)}</span></li>`;
+}
+
+function renderGroups(state) {
+  const groups = groupIdeas(state);
+  if (groups.length === 0) {
+    return '<div class="empty"><h2>No ideas yet</h2><p>Paste a winning script, choose the idea types and press Generate.</p></div>';
+  }
+  return groups
     .map(
-      ({ title, items }) =>
-        `<section class="group"><h2>${title}</h2><div class="cards">${items.map((card) => renderCard(card, loading)).join('')}</div></section>`,
+      ({ type, label, items }) =>
+        `<section class="group" data-type="${escapeHtml(type)}"><h2>${escapeHtml(label)}</h2><ul class="ideas">${items.map(renderIdea).join('')}</ul></section>`,
     )
     .join('');
 }
 
-function renderKept(cards) {
-  if (cards.length === 0) return '';
-  const items = cards.map((card) => `<li data-card-id="${escapeHtml(card.id)}">${escapeHtml(card.text)}</li>`).join('');
-  return `<section class="kept"><h2>Kept (${cards.length})</h2><ul>${items}</ul></section>`;
+function renderError(state) {
+  return state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : '';
 }
 
-function renderRejected(cards) {
-  if (cards.length === 0) return '';
-  const rejectLabels = new Map(REJECT_TAGS.map((tag) => [tag.id, tag.label]));
-  const items = cards
-    .map((card) => {
-      const label = rejectLabels.get(card.rejectTag);
-      const tag = label ? ` <span class="reject-tag">${label}</span>` : '';
-      return `<li data-card-id="${escapeHtml(card.id)}">${escapeHtml(card.text)}${tag} <button type="button" data-action="restore" data-card-id="${escapeHtml(card.id)}">Restore</button></li>`;
-    })
-    .join('');
-  return `<details class="rejected"><summary>Rejected (${cards.length})</summary><ul>${items}</ul></details>`;
-}
-
-export function renderCards(cards, { loading = false } = {}) {
-  const active = cards.filter((card) => card.state !== 'rejected');
-  const kept = cards.filter((card) => card.state === 'kept');
-  const rejected = cards.filter((card) => card.state === 'rejected');
-  return renderGroups(active, loading) + renderKept(kept) + renderRejected(rejected);
+export function renderWorkspace(state) {
+  return `<div class="workspace">${renderInputs(state)}<main class="review">${renderError(state)}${renderGroups(state)}</main></div>`;
 }
