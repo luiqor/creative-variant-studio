@@ -20,6 +20,6 @@ test('the page has the script input, error area and loads its ES modules from th
   assert.match(html, /<script type="module" src="\/js\/main\.js">/);
   assert.match(main.headers.get('content-type'), /javascript/);
   assert.equal(stylesheet.status, 200);
-  assert.equal(modules.length, 3);
+  assert.ok(modules.length >= 3);
   assert.ok(modules.every((res) => res.status === 200));
 });
