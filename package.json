@@ -48,7 +48,9 @@
           ]
         }
       ],
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "win": {
       "target": [
