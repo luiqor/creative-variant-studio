@@ -197,3 +197,22 @@ test('the More like this submit button is disabled while a request is running', 
 test('there is a New script button in the inputs pane', () => {
   assert.match(renderWorkspace(ready), /<button[^>]*data-action="new-script"[^>]*>New script<\/button>/);
 });
+
+const exportBlock = (html) => section(html, /<div class="export">[\s\S]*?<\/details>\s*<\/div>/);
+
+test('Export is disabled until an idea is kept', () => {
+  for (const state of [ready, batch()]) {
+    const html = exportBlock(renderWorkspace(state));
+    assert.match(html, /data-action="export-jsx" disabled/);
+    assert.match(html, /data-action="export-csv" disabled/);
+    assert.match(html, /data-action="export-json" disabled/);
+  }
+});
+
+test('Export offers the AE script as the main button and CSV and JSON in a menu once something is kept', () => {
+  const start = batch();
+  const html = exportBlock(renderWorkspace(keepIdea(start, idOf(start, 'H1'))));
+  assert.match(html, /<button[^>]*class="btn primary"[^>]*data-action="export-jsx">Export AE script<\/button>/);
+  assert.match(html, /<details class="menu">[\s\S]*data-action="export-csv">CSV<[\s\S]*data-action="export-json">JSON</);
+  assert.doesNotMatch(html, /disabled/);
+});

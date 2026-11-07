@@ -133,3 +133,12 @@ test('POST /api/generate returns an error payload after two invalid responses', 
   assert.equal(status, 502);
   assert.match(json.error, /try again/i);
 });
+
+test('serves the AE script template for the export', async () => {
+  const server = createApp().listen(0);
+  const res = await fetch(`http://localhost:${server.address().port}/ae/duplicate-from-csv.jsx`);
+  const text = await res.text();
+  server.close();
+  assert.equal(res.status, 200);
+  assert.match(text, /\/\/ DATA-BEGIN/);
+});

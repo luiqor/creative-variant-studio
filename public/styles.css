@@ -212,3 +212,24 @@ textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 
 }
 .modal .error { margin: 14px 0 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+.export { display: flex; gap: 6px; align-items: flex-start; margin-top: 20px; }
+.menu { position: relative; }
+.menu summary { cursor: pointer; list-style: none; padding: 9px 12px; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu-list {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+  overflow: hidden;
+  z-index: 5;
+}
+.menu-list button { border: 0; background: none; text-align: left; padding: 9px 14px; }
+.menu-list button:hover:not(:disabled) { background: #f1f2f6; }

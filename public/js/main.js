@@ -1,6 +1,7 @@
 import { renderPreviewBody, renderWorkspace } from './render.js';
 import { requestBatch, requestMore } from './api.js';
 import { createSession } from './session.js';
+import { buildAeScript, hasKept, jsonExport, wideCsv } from './export.js';
 import {
   addType,
   applyBatch,
@@ -56,12 +57,38 @@ function submitMore() {
     .catch((err) => update({ ...state, loading: false, error: err.message }));
 }
 
+function download(filename, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportAeScript() {
+  fetch('/ae/duplicate-from-csv.jsx')
+    .then((response) => {
+      if (!response.ok) throw new Error('missing template');
+      return response.text();
+    })
+    .then((template) => download('modifications.jsx', buildAeScript(template, wideCsv(state)), 'text/plain'))
+    .catch(() => update({ ...state, error: 'Could not build the AE script.' }));
+}
+
+function exportFile(filename, build, type) {
+  if (hasKept(state)) download(filename, build(state), type);
+}
+
 function startNewScript() {
   session.clear();
   update(newScript());
 }
 
 const ACTIONS = {
+  'export-jsx': () => hasKept(state) && exportAeScript(),
+  'export-csv': () => exportFile('ideas.csv', wideCsv, 'text/csv'),
+  'export-json': () => exportFile('ideas.json', jsonExport, 'application/json'),
   'new-script': startNewScript,
   more: (el) => update(openMore(state, el.dataset.id)),
   'more-tag': (el) => update(toggleMoreTag(state, el.dataset.tag)),
@@ -83,6 +110,7 @@ root.addEventListener('click', (event) => {
   if (!el || el.disabled || !ACTIONS[el.dataset.action]) return;
   if (el.dataset.self !== undefined && event.target !== el) return;
   ACTIONS[el.dataset.action](el);
+  el.closest('details')?.removeAttribute('open');
 });
 
 root.addEventListener('input', (event) => {

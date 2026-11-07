@@ -1,3 +1,4 @@
+import { hasKept } from './export.js';
 import { LIKED_TAGS } from './tags.js';
 import {
   canGenerate,
@@ -110,17 +111,31 @@ export function renderPreviewBody(state) {
   return `<div class="frame" data-type="${escapeHtml(idea.type)}"><div class="safe-zone"><p class="frame-text">${escapeHtml(idea.text)}</p></div></div>${note}`;
 }
 
+function renderExport(state) {
+  const disabled = hasKept(state) ? '' : ' disabled';
+  return `<div class="export">
+    <button type="button" class="btn primary" data-action="export-jsx"${disabled}>Export AE script</button>
+    <details class="menu">
+      <summary class="btn ghost" aria-label="Other export formats">▾</summary>
+      <div class="menu-list">
+        <button type="button" data-action="export-csv"${disabled}>CSV</button>
+        <button type="button" data-action="export-json"${disabled}>JSON</button>
+      </div>
+    </details>
+  </div>`;
+}
+
 function renderKept(state) {
   const preview = `<section class="preview" data-preview>${renderPreviewBody(state)}</section>`;
   const lists = keptLists(state);
-  if (lists.length === 0) return `<aside class="panel kept">${preview}<p class="hint">Kept ideas appear here.</p></aside>`;
+  if (lists.length === 0) return `<aside class="panel kept">${preview}<p class="hint">Kept ideas appear here.</p>${renderExport(state)}</aside>`;
   const groups = lists
     .map(({ type, label, items }) => {
       const body = items.length > 0 ? items.map(renderKeptItem).join('') : '<li class="empty-note">Nothing kept yet</li>';
       return `<section class="kept-group" data-type="${escapeHtml(type)}"><h3>${escapeHtml(label)} <span class="count">${items.length}</span></h3><ol class="kept-list">${body}</ol></section>`;
     })
     .join('');
-  return `<aside class="panel kept">${preview}<h2>Kept</h2>${groups}</aside>`;
+  return `<aside class="panel kept">${preview}<h2>Kept</h2>${groups}${renderExport(state)}</aside>`;
 }
 
 function renderError(state) {
