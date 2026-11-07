@@ -2,6 +2,7 @@ import { createCards, keepCard, rejectCard, restoreCard, toggleLikedTag, setComm
 import { renderCards } from './render.js';
 import { requestBatch } from './api.js';
 import { setupExport } from './export-ui.js';
+import { trackAction, trackExport } from './action-events.js';
 
 const scriptInput = document.getElementById('script');
 const generateButton = document.getElementById('generate');
@@ -37,6 +38,7 @@ cardsRoot.addEventListener('click', (event) => {
     navigator.clipboard.writeText(card.text).catch((err) => showError(`Copy failed: ${err.message}`));
     return;
   }
+  trackAction(state.cards, cardId, action, tag);
   state.cards = ACTIONS[action](state.cards, cardId, tag);
   render();
 });
@@ -44,6 +46,7 @@ cardsRoot.addEventListener('click', (event) => {
 cardsRoot.addEventListener('change', (event) => {
   const field = event.target.closest('textarea[data-action="comment"]');
   if (!field) return;
+  trackAction(state.cards, field.dataset.cardId, 'comment', null, field.value);
   state.cards = setComment(state.cards, field.dataset.cardId, field.value);
 });
 
@@ -62,6 +65,6 @@ generateButton.addEventListener('click', () => {
     });
 });
 
-setupExport({ getCards: () => state.cards });
+setupExport({ getCards: () => state.cards, onExported: (format, cards) => trackExport(format, cards) });
 
 render();

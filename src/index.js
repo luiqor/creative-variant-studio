@@ -13,6 +13,6 @@ const config = (() => {
 
 const client = new Anthropic({ apiKey: config.apiKey });
 
-createApp({ client, model: config.model }).listen(config.port, () => {
+createApp({ client, model: config.model, eventsPath: process.env.EVENTS_PATH ?? 'events.jsonl' }).listen(config.port, () => {
   process.stdout.write(`Listening on http://localhost:${config.port}\n`);
 });
