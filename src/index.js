@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { GoogleGenAI } from '@google/genai';
 import { loadConfig } from './config.js';
 import { createApp } from './app.js';
