@@ -1,6 +1,7 @@
 import { createCards, keepCard, rejectCard, restoreCard, toggleLikedTag, setComment } from './cards.js';
 import { renderCards } from './render.js';
 import { requestBatch } from './api.js';
+import { setupExport } from './export-ui.js';
 
 const scriptInput = document.getElementById('script');
 const generateButton = document.getElementById('generate');
@@ -60,5 +61,7 @@ generateButton.addEventListener('click', () => {
       render();
     });
 });
+
+setupExport({ getCards: () => state.cards });
 
 render();
