@@ -4,6 +4,8 @@ Desktop app that turns a winning ad script into new hook and on-screen text idea
 
 ## Installing
 
+Download the latest installer from the [Releases page](https://github.com/luiqor/creative-variant-studio/releases/latest): the `.dmg` for macOS (`arm64` for Apple Silicon, the other one for Intel) or the `.exe` for Windows.
+
 The installers are not signed yet, so macOS and Windows will warn about an unknown developer. This is expected. Follow the steps for your system once.
 
 ### macOS
