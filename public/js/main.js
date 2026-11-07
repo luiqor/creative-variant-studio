@@ -1,6 +1,7 @@
 import { renderPreviewBody, renderWorkspace } from './render.js';
 import { requestBatch, requestMore } from './api.js';
 import { createSession } from './session.js';
+import { eventForAction, exportEvent, feedbackEvent, reportEvent } from './events.js';
 import { buildAeScript, hasKept, jsonExport, wideCsv } from './export.js';
 import {
   addType,
@@ -35,6 +36,10 @@ function render() {
   window.scrollTo(0, scrollTop);
 }
 
+function track(event) {
+  if (event) reportEvent(event.type, event.data);
+}
+
 function update(next) {
   state = next;
   session.save(state);
@@ -51,6 +56,7 @@ function generate() {
 
 function submitMore() {
   if (!canSubmitMore(state)) return;
+  track(feedbackEvent(state));
   update({ ...state, loading: true, error: '' });
   requestMore(moreRequest(state))
     .then((batch) => update({ ...closeMore(applyBatch(state, batch)), loading: false }))
@@ -72,12 +78,17 @@ function exportAeScript() {
       if (!response.ok) throw new Error('missing template');
       return response.text();
     })
-    .then((template) => download('modifications.jsx', buildAeScript(template, wideCsv(state)), 'text/plain'))
+    .then((template) => {
+      download('modifications.jsx', buildAeScript(template, wideCsv(state)), 'text/plain');
+      track(exportEvent(state, 'jsx'));
+    })
     .catch(() => update({ ...state, error: 'Could not build the AE script.' }));
 }
 
-function exportFile(filename, build, type) {
-  if (hasKept(state)) download(filename, build(state), type);
+function exportFile(filename, build, type, format) {
+  if (!hasKept(state)) return;
+  download(filename, build(state), type);
+  track(exportEvent(state, format));
 }
 
 function startNewScript() {
@@ -87,8 +98,8 @@ function startNewScript() {
 
 const ACTIONS = {
   'export-jsx': () => hasKept(state) && exportAeScript(),
-  'export-csv': () => exportFile('ideas.csv', wideCsv, 'text/csv'),
-  'export-json': () => exportFile('ideas.json', jsonExport, 'application/json'),
+  'export-csv': () => exportFile('ideas.csv', wideCsv, 'text/csv', 'csv'),
+  'export-json': () => exportFile('ideas.json', jsonExport, 'application/json', 'json'),
   'new-script': startNewScript,
   more: (el) => update(openMore(state, el.dataset.id)),
   'more-tag': (el) => update(toggleMoreTag(state, el.dataset.tag)),
@@ -98,9 +109,15 @@ const ACTIONS = {
   'add-type': () => update(addType(state, root.querySelector('[data-new-type]').value)),
   'count-up': () => update(setCount(state, state.count + 1)),
   'count-down': () => update(setCount(state, state.count - 1)),
-  keep: (el) => update(keepIdea(state, el.dataset.id)),
+  keep: (el) => {
+    track(eventForAction(state, 'keep', el.dataset.id));
+    update(keepIdea(state, el.dataset.id));
+  },
   unkeep: (el) => update(unkeepIdea(state, el.dataset.id)),
-  reject: (el) => update(rejectIdea(state, el.dataset.id)),
+  reject: (el) => {
+    track(eventForAction(state, 'reject', el.dataset.id));
+    update(rejectIdea(state, el.dataset.id));
+  },
   restore: (el) => update(restoreIdea(state, el.dataset.id)),
   generate,
 };

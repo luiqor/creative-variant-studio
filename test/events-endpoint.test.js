@@ -65,3 +65,14 @@ test('a successful /api/more-like-this also logs a generated event, so its cards
   assert.equal(res.status, 200);
   assert.deepEqual(logged(path).map((e) => [e.type, e.count]), [['generated', 10]]);
 });
+
+test('generated events record how many ideas were generated per idea type', async () => {
+  const path = eventsPath();
+  const list = (p, n) => Array.from({ length: n }, (_, i) => `${p} ${i}`);
+  const client = { models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: { hook: list('h', 3), cta: list('c', 3) } }] }) } };
+  const server = createApp({ client, model: 'm', eventsPath: path }).listen(0);
+  await fetch(`http://localhost:${server.address().port}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ script: 's', types: ['hook', 'cta'], count: 3 }) });
+  server.close();
+  const [event] = logged(path);
+  assert.deepEqual(event.counts, { hook: 3, cta: 3 });
+});

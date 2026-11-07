@@ -14,9 +14,10 @@ export function setupEvents(app, eventsPath) {
 
   return {
     recordGenerated(batch) {
-      const count = Object.values(batch).reduce((sum, ideas) => sum + ideas.length, 0);
+      const counts = Object.fromEntries(Object.entries(batch).map(([type, ideas]) => [type, ideas.length]));
+      const count = Object.values(counts).reduce((sum, n) => sum + n, 0);
       try {
-        log?.append('generated', { count });
+        log?.append('generated', { count, counts });
       } catch {
         // Metrics must never break generation.
       }
