@@ -50,7 +50,7 @@ test('POST /api/more-like-this returns 10 cards of the chosen type using all car
   });
   const cards = [
     card('1', 'hook', 'Chosen hook', { likedTags: ['humor'], comment: 'cheeky' }),
-    card('2', 'hook', 'Bad hook', { state: 'rejected', rejectTag: 'off-brand' }),
+    card('2', 'hook', 'Bad hook', { state: 'rejected', rejectTag: 'off_brand' }),
     card('3', 'on_screen_text', 'Some overlay'),
   ];
   const server = createApp({ client, model: 'm' }).listen(0);
@@ -64,7 +64,7 @@ test('POST /api/more-like-this returns 10 cards of the chosen type using all car
   assert.equal(res.status, 200);
   assert.deepEqual(json, { hooks: ten('n') });
   const prompt = calls[0].messages[0].content;
-  for (const expected of ['Chosen hook', 'Bad hook', 'Some overlay', 'humor', 'cheeky', 'off-brand']) {
+  for (const expected of ['Chosen hook', 'Bad hook', 'Some overlay', 'Humor', 'cheeky', 'Off-brand']) {
     assert.match(prompt, new RegExp(expected));
   }
 });

@@ -10,5 +10,5 @@ test('main.js reports card actions and exports through the tracking module', asy
 
   assert.match(main, /from '\.\/action-events\.js'/);
   assert.match(main, /trackAction\(/);
-  assert.match(main, /onExported: \(format, cards\) => trackExport\(format, cards\)/);
+  assert.match(main, /onExported: trackExport/);
 });

@@ -35,7 +35,8 @@ test('generateMore sends the liked tags and comment as guidance', async () => {
     comment: 'more playful please',
   });
   const prompt = client.calls[0].messages[0].content;
-  assert.match(prompt, /humor, short/);
+  assert.match(prompt, /Humor, Short/);
+  assert.doesNotMatch(prompt, /humor|short\b/);
   assert.match(prompt, /more playful please/);
 });
 
@@ -46,11 +47,12 @@ test('generateMore sends reject tags of rejected cards as negative hints', async
     model: 'm',
     type: 'hook',
     existingTexts: ['a'],
-    rejectedFeedback: [{ text: 'a very long rambling hook', rejectTag: 'too long' }],
+    rejectedFeedback: [{ text: 'a very long rambling hook', rejectTag: 'too_long' }],
   });
   const prompt = client.calls[0].messages[0].content;
   assert.match(prompt, /avoid/i);
-  assert.match(prompt, /a very long rambling hook.*too long/);
+  assert.match(prompt, /a very long rambling hook.*Too long/);
+  assert.doesNotMatch(prompt, /too_long/);
 });
 
 test('generateMore sends all existing texts as do-not-repeat', async () => {

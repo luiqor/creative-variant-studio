@@ -14,3 +14,7 @@ export const REJECT_TAGS = Object.freeze([
   { id: 'similar_to_another', label: 'Similar to another' },
   { id: 'unnatural', label: 'Unnatural' },
 ]);
+
+const ALL_TAGS = [...LIKED_TAGS, ...REJECT_TAGS];
+
+export const tagLabel = (id) => ALL_TAGS.find((tag) => tag.id === id)?.label ?? id;

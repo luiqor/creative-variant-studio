@@ -15,10 +15,11 @@ function download({ build, mime, filename }, cards) {
 }
 
 // onExported(format, cards) is the seam for the "exported" event (ticket 08).
-export function setupExport({ getCards, onExported = () => {} }) {
+export function setupExport({ getCards, onExported = () => {}, onNothingKept = () => {} }) {
   Object.entries(FORMATS).forEach(([format, spec]) => {
     document.getElementById(`export-${format}`).addEventListener('click', () => {
       const cards = getCards();
+      if (!cards.some((card) => card.state === 'kept')) return onNothingKept();
       download(spec, cards);
       onExported(format, cards);
     });

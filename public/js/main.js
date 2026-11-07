@@ -1,4 +1,4 @@
-import { createCards, keepCard, rejectCard, restoreCard, toggleLikedTag, setComment } from './cards.js';
+import { keepCard, rejectCard, restoreCard, toggleLikedTag, setComment } from './cards.js';
 import { renderCards } from './render.js';
 import { requestBatch } from './api.js';
 import { requestMore, createMoreCards } from './more-like-this.js';
@@ -27,7 +27,7 @@ newScriptButton.addEventListener('click', () => {
 function render() {
   session.save(state.cards);
   newScriptButton.disabled = state.loading;
-  cardsRoot.innerHTML = renderCards(state.cards);
+  cardsRoot.innerHTML = renderCards(state.cards, { loading: state.loading });
   generateButton.disabled = state.loading;
   generateButton.textContent = state.loading ? 'Generating...' : 'Generate';
 }
@@ -38,17 +38,17 @@ function showError(message) {
 }
 
 const ACTIONS = {
-  keep: (cards, id) => keepCard(cards, id),
-  reject: (cards, id, tag) => rejectCard(cards, id, tag ?? null),
-  restore: (cards, id) => restoreCard(cards, id),
-  like: (cards, id, tag) => toggleLikedTag(cards, id, tag),
+  keep: keepCard,
+  reject: rejectCard,
+  restore: restoreCard,
+  like: toggleLikedTag,
 };
 
-function moreLikeThis(cardId) {
+function runRequest(request) {
   showError('');
   state.loading = true;
   render();
-  requestMore(state.cards, cardId)
+  request
     .then((batch) => {
       state.cards = createMoreCards(state.cards, batch);
     })
@@ -70,7 +70,7 @@ cardsRoot.addEventListener('click', (event) => {
   }
   trackAction(state.cards, cardId, action, tag);
   if (action === 'more') {
-    moreLikeThis(cardId);
+    if (!state.loading) runRequest(requestMore(state.cards, cardId));
     return;
   }
   state.cards = ACTIONS[action](state.cards, cardId, tag);
@@ -86,20 +86,13 @@ cardsRoot.addEventListener('change', (event) => {
 });
 
 generateButton.addEventListener('click', () => {
-  showError('');
-  state.loading = true;
-  render();
-  requestBatch(scriptInput.value)
-    .then((batch) => {
-      state.cards = [...state.cards, ...createCards(batch)];
-    })
-    .catch((err) => showError(err.message))
-    .finally(() => {
-      state.loading = false;
-      render();
-    });
+  if (!state.loading) runRequest(requestBatch(scriptInput.value));
 });
 
-setupExport({ getCards: () => state.cards, onExported: (format, cards) => trackExport(format, cards) });
+setupExport({
+  getCards: () => state.cards,
+  onExported: trackExport,
+  onNothingKept: () => showError('Keep at least one card before exporting.'),
+});
 
 render();

@@ -1,4 +1,6 @@
 import { LIMITS } from './config.js';
+// Shared with the browser so tag ids and labels have one source of truth.
+import { tagLabel } from '../public/js/tags.js';
 import { BATCH_SIZE, FIELD_LABELS, buildSystemPrompt, requestIdeas } from './generation.js';
 
 const TYPE_FIELDS = {
@@ -39,14 +41,14 @@ export async function generateMore({
     `Do not repeat any of these existing texts:\n${bullets(existingTexts)}`,
   ];
   if (likedTags.length) {
-    sections.push(`The designer liked these qualities in the chosen card: ${likedTags.join(', ')}.`);
+    sections.push(`The designer liked these qualities in the chosen card: ${likedTags.map(tagLabel).join(', ')}.`);
   }
   if (comment.trim()) sections.push(`Designer's comment on the chosen card: ${comment.trim()}`);
   const hints = rejectedFeedback.filter((r) => r.rejectTag);
   if (hints.length) {
     sections.push(
       `Avoid the problems the designer flagged in rejected cards:\n${bullets(
-        hints.map((r) => `"${r.text}" (${r.rejectTag})`),
+        hints.map((r) => `"${r.text}" (${tagLabel(r.rejectTag)})`),
       )}`,
     );
   }

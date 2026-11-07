@@ -61,6 +61,13 @@ test('kept cards are listed in a Kept section', () => {
   assert.ok(kept.includes('Keeper') && !kept.includes('Mine'));
 });
 
+test('More like this buttons are disabled while a request is loading, enabled otherwise', () => {
+  const cards = [card('hook', 'H1')];
+  const more = (html) => html.match(/<button[^>]*data-action="more"[^>]*>/)[0];
+  assert.ok(!more(renderCards(cards)).includes('disabled'));
+  assert.ok(more(renderCards(cards, { loading: true })).includes('disabled'));
+});
+
 test('no cards renders nothing', () => {
   assert.equal(renderCards([]), '');
 });

@@ -9,7 +9,7 @@ const GROUPS = [
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 
-function renderActions(card) {
+function renderActions(card, loading) {
   const id = escapeHtml(card.id);
   const rejectTags = REJECT_TAGS.map(
     (tag) =>
@@ -19,7 +19,7 @@ function renderActions(card) {
     <button type="button" data-action="keep" data-card-id="${id}">Keep</button>
     <button type="button" data-action="reject" data-card-id="${id}">Reject</button>
     <button type="button" data-action="copy" data-card-id="${id}">Copy</button>
-    <button type="button" data-action="more" data-card-id="${id}">More like this</button>
+    <button type="button" data-action="more" data-card-id="${id}"${loading ? ' disabled' : ''}>More like this</button>
   </div>
   <div class="reject-tags">${rejectTags}</div>`;
 }
@@ -34,24 +34,24 @@ function renderFeedback(card) {
   <textarea data-action="comment" data-card-id="${id}" rows="2" placeholder="Optional comment">${escapeHtml(card.comment)}</textarea>`;
 }
 
-function renderCard(card) {
+function renderCard(card, loading) {
   const warning = fitsSafeZone(card.text)
     ? ''
     : '<p class="warning" role="alert">Text may not fit the safe zone</p>';
   return `<article class="card" data-card-id="${escapeHtml(card.id)}" data-state="${escapeHtml(card.state)}">
   <div class="frame"><div class="safe-zone"><p class="card-text">${escapeHtml(card.text)}</p></div></div>
   ${warning}
-  ${renderActions(card)}
+  ${renderActions(card, loading)}
   ${renderFeedback(card)}
 </article>`;
 }
 
-function renderGroups(cards) {
+function renderGroups(cards, loading) {
   return GROUPS.map(({ type, title }) => ({ title, items: cards.filter((card) => card.type === type) }))
     .filter(({ items }) => items.length > 0)
     .map(
       ({ title, items }) =>
-        `<section class="group"><h2>${title}</h2><div class="cards">${items.map(renderCard).join('')}</div></section>`,
+        `<section class="group"><h2>${title}</h2><div class="cards">${items.map((card) => renderCard(card, loading)).join('')}</div></section>`,
     )
     .join('');
 }
@@ -75,9 +75,9 @@ function renderRejected(cards) {
   return `<details class="rejected"><summary>Rejected (${cards.length})</summary><ul>${items}</ul></details>`;
 }
 
-export function renderCards(cards) {
+export function renderCards(cards, { loading = false } = {}) {
   const active = cards.filter((card) => card.state !== 'rejected');
   const kept = cards.filter((card) => card.state === 'kept');
   const rejected = cards.filter((card) => card.state === 'rejected');
-  return renderGroups(active) + renderKept(kept) + renderRejected(rejected);
+  return renderGroups(active, loading) + renderKept(kept) + renderRejected(rejected);
 }

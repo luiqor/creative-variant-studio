@@ -47,7 +47,7 @@ function validate(input, fields) {
 }
 
 /**
- * Shared tool-use + retry core. Reused by "more like this" (ticket 05):
+ * Shared tool-use + retry core. Reused by "More like this":
  * pass fewer `fields` (e.g. { hooks: 10 }) and put extra guidance /
  * do-not-repeat / negative hints into `userPrompt`.
  * The server only ever reads the tool_use block, never prose.
