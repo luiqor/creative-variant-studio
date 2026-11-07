@@ -36,7 +36,7 @@ test('the runtime folders named in the installer exist', () => {
 });
 
 test('the install instructions cover both systems and the first-launch token', () => {
-  const text = readFileSync(new URL('INSTALL.md', root), 'utf8');
+  const text = readFileSync(new URL('README.md', root), 'utf8');
   assert.match(text, /macOS/);
   assert.match(text, /Windows/);
   assert.match(text, /unknown developer|unidentified developer/i);
