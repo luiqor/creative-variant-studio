@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderWorkspace } from '../public/js/render.js';
-import { initialState, addType, applyBatch, toggleType, keepIdea, rejectIdea, setPreview } from '../public/js/workspace.js';
+import { initialState, addType, applyBatch, toggleType, keepIdea, rejectIdea, setPreview, openMore, toggleMoreTag, setMoreInstruction } from '../public/js/workspace.js';
 
 const ready = { ...initialState(), script: 'Hook: hi' };
 const generateButton = (html) => html.match(/<button[^>]*data-action="generate"[^>]*>[^<]*<\/button>/)[0];
@@ -159,4 +159,37 @@ test('review rows and kept items can be pointed at', () => {
   const html = renderWorkspace(kept);
   assert.match(html, new RegExp(`<li class="idea" data-idea-id="${idOf(start, 'H2')}"`));
   assert.match(html, new RegExp(`<li class="kept-item"[^>]*data-idea-id="${idOf(start, 'H1')}"`));
+});
+
+test('review rows and kept items have a "more like this" button', () => {
+  const start = batch();
+  const state = keepIdea(start, idOf(start, 'H1'));
+  const html = renderWorkspace(state);
+  assert.match(html, new RegExp(`<li class="idea"[^>]*>[\\s\\S]*?data-action="more" data-id="${idOf(start, 'H2')}"`));
+  assert.match(html, new RegExp(`<li class="kept-item"[^>]*>[\\s\\S]*?data-action="more" data-id="${idOf(start, 'H1')}"`));
+});
+
+test('there is no More like this modal until it is opened', () => {
+  assert.doesNotMatch(renderWorkspace(batch()), /role="dialog"/);
+});
+
+test('the More like this modal shows the chosen idea, the tags, the instruction field and the count', () => {
+  const start = applyBatch(ready, { hook: ['Lost <b>sock</b>?'] });
+  const opened = toggleMoreTag(openMore({ ...start, count: 7 }, start.ideas[0].id), 'humor');
+  const html = renderWorkspace(setMoreInstruction(opened, 'a "wink"'));
+  const dialog = section(html, /<div class="modal-backdrop"[\s\S]*<\/div>\s*<\/div>/);
+  assert.match(dialog, /role="dialog"/);
+  assert.match(dialog, /Lost &lt;b&gt;sock&lt;\/b&gt;\?/);
+  assert.match(dialog, /data-action="more-tag" data-tag="humor" aria-pressed="true"[^>]*>Humor</);
+  assert.match(dialog, /data-action="more-tag" data-tag="short" aria-pressed="false"[^>]*>Short</);
+  assert.equal(dialog.match(/data-action="more-tag"/g).length, 6);
+  assert.match(dialog, /data-more-instruction[^>]*value="a &quot;wink&quot;"/);
+  assert.match(dialog, /data-action="more-submit"[^>]*>Generate 7 more</);
+  assert.match(dialog, /data-action="more-close"/);
+});
+
+test('the More like this submit button is disabled while a request is running', () => {
+  const start = applyBatch(ready, { hook: ['H'] });
+  const html = renderWorkspace({ ...openMore(start, start.ideas[0].id), loading: true });
+  assert.match(html, /data-action="more-submit" disabled/);
 });

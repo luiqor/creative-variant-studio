@@ -9,6 +9,7 @@ import {
   wordLimit,
 } from './idea-types.js';
 import { fitsSafeZone } from './safe-zone.js';
+import { LIKED_TAGS } from './tags.js';
 
 export { typeLabel };
 
@@ -24,6 +25,7 @@ export function initialState() {
     ideas: [],
     kept: {},
     previewId: null,
+    more: null,
     loading: false,
     error: '',
   };
@@ -77,6 +79,8 @@ export function groupIdeas(state) {
     }))
     .filter((group) => group.items.length > 0);
 }
+
+export const findIdeaById = (state, id) => findIdea(state, id);
 
 const findIdea = (state, id) => state.ideas.find((idea) => idea.id === id) ?? null;
 
@@ -159,4 +163,38 @@ export function previewWarning(idea) {
   if (count > limit) return `${count} words, over the ${limit}-word limit`;
   if (!fitsSafeZone(idea.text)) return 'Text may not fit the safe zone';
   return null;
+}
+
+export function openMore(state, id) {
+  if (!findIdea(state, id)) return state;
+  return { ...state, more: { id, tags: [], instruction: '' } };
+}
+
+export function closeMore(state) {
+  return { ...state, more: null };
+}
+
+export function toggleMoreTag(state, tag) {
+  if (!state.more || !LIKED_TAGS.some((t) => t.id === tag)) return state;
+  const tags = state.more.tags.includes(tag) ? state.more.tags.filter((t) => t !== tag) : [...state.more.tags, tag];
+  return { ...state, more: { ...state.more, tags } };
+}
+
+export function setMoreInstruction(state, instruction) {
+  if (!state.more) return state;
+  return { ...state, more: { ...state.more, instruction } };
+}
+
+export const canSubmitMore = (state) => state.more !== null && !state.loading;
+
+export function moreRequest(state) {
+  const idea = findIdea(state, state.more.id);
+  return {
+    type: idea.type,
+    source: idea.text,
+    texts: state.ideas.map((i) => i.text),
+    likedTags: state.more.tags,
+    instruction: state.more.instruction.trim(),
+    count: state.count,
+  };
 }

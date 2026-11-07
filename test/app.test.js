@@ -71,50 +71,62 @@ for (const [name, body] of invalidBodies) {
   });
 }
 
-test('POST /api/more-like-this returns 10 cards of the chosen type using all card feedback', async () => {
+async function postMore(client, body) {
+  const server = createApp({ client, model: 'm' }).listen(0);
+  const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json();
+  server.close();
+  return { status: res.status, json };
+}
+
+const moreBody = {
+  type: 'hook',
+  source: 'Chosen hook',
+  texts: ['Chosen hook', 'Another idea', 'Some overlay'],
+  likedTags: ['humor'],
+  instruction: 'cheeky',
+  count: 3,
+};
+
+test('POST /api/more-like-this returns ideas of the chosen type using the designer guidance', async () => {
   const calls = [];
   const client = {
     models: {
       generateContent: async (params) => {
         calls.push(params);
-        return { functionCalls: [{ name: 'submit_ideas', args: { hook: ten('n') } }] };
+        return { functionCalls: [{ name: 'submit_ideas', args: { hook: ten('n').slice(0, 3) } }] };
       },
     },
   };
-  const card = (id, type, text, extra = {}) => ({
-    id, type, text, state: 'new', likedTags: [], rejectTag: null, comment: '', ...extra,
-  });
-  const cards = [
-    card('1', 'hook', 'Chosen hook', { likedTags: ['humor'], comment: 'cheeky' }),
-    card('2', 'hook', 'Bad hook', { state: 'rejected', rejectTag: 'off_brand' }),
-    card('3', 'on_screen_text', 'Some overlay'),
-  ];
-  const server = createApp({ client, model: 'm' }).listen(0);
-  const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cardId: '1', cards }),
-  });
-  const json = await res.json();
-  server.close();
-  assert.equal(res.status, 200);
-  assert.deepEqual(json, { hook: ten('n') });
-  const prompt = calls[0].contents;
-  for (const expected of ['Chosen hook', 'Bad hook', 'Some overlay', 'Humor', 'cheeky', 'Off-brand']) {
-    assert.match(prompt, new RegExp(expected));
+  const { status, json } = await postMore(client, moreBody);
+  assert.equal(status, 200);
+  assert.deepEqual(json, { hook: ten('n').slice(0, 3) });
+  for (const expected of ['Chosen hook', 'Another idea', 'Some overlay', 'Humor', 'cheeky']) {
+    assert.match(calls[0].contents, new RegExp(expected));
   }
 });
 
-test('POST /api/more-like-this returns 400 for an unknown card', async () => {
-  const server = createApp({ client: stub({}), model: 'm' }).listen(0);
-  const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ cardId: 'zzz', cards: [] }),
+const invalidMore = [
+  ['an empty source', { ...moreBody, source: '  ' }],
+  ['a bad type name', { ...moreBody, type: 'Not Valid' }],
+  ['texts that are not a list', { ...moreBody, texts: 'x' }],
+  ['more than 500 texts', { ...moreBody, texts: Array.from({ length: 501 }, () => 't') }],
+  ['an unknown liked tag', { ...moreBody, likedTags: ['spicy'] }],
+  ['a count of 0', { ...moreBody, count: 0 }],
+  ['a count above 30', { ...moreBody, count: 31 }],
+];
+
+for (const [name, body] of invalidMore) {
+  test(`POST /api/more-like-this rejects ${name} with 400`, async () => {
+    const { status, json } = await postMore(stub({}), body);
+    assert.equal(status, 400);
+    assert.ok(json.error);
   });
-  server.close();
-  assert.equal(res.status, 400);
-});
+}
 
 test('POST /api/generate returns an error payload after two invalid responses', async () => {
   const { status, json } = await post(stub({ hook: [] }), { script: 'x', types: ['hook'] });

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateMore } from '../src/more-like-this.js';
 
-const ten = (p) => Array.from({ length: 10 }, (_, i) => `${p} ${i}`);
+const list = (prefix, n = 10) => Array.from({ length: n }, (_, i) => `${prefix} ${i}`);
+
 function recorder(input) {
   const calls = [];
   return {
@@ -16,55 +17,56 @@ function recorder(input) {
   };
 }
 
-test('generateMore returns 10 hooks only, with a single-field schema, for a hook card', async () => {
-  const client = recorder({ hook: ten('h') });
-  const out = await generateMore({ client, model: 'm', type: 'hook', existingTexts: [] });
-  assert.deepEqual(out, { hook: ten('h') });
+const base = { model: 'm', type: 'hook', source: 'Lost a sock again?', existingTexts: ['Lost a sock again?'] };
+
+test('returns the chosen count of ideas of the same type only, with a single-field schema', async () => {
+  const client = recorder({ hook: list('h', 4) });
+  const out = await generateMore({ ...base, client, count: 4 });
+  assert.deepEqual(out, { hook: list('h', 4) });
   const schema = client.calls[0].config.tools[0].functionDeclarations[0].parametersJsonSchema;
   assert.deepEqual(Object.keys(schema.properties), ['hook']);
 });
 
-test('generateMore sends the liked tags and comment as guidance', async () => {
-  const client = recorder({ hook: ten('h') });
-  await generateMore({
-    client,
-    model: 'm',
-    type: 'hook',
-    existingTexts: [],
-    likedTags: ['humor', 'short'],
-    comment: 'more playful please',
-  });
+test('uses a count of 10 when none is given', async () => {
+  const client = recorder({ hook: list('h') });
+  const out = await generateMore({ ...base, client });
+  assert.equal(out.hook.length, 10);
+});
+
+test('sends the source idea, the liked tags and the instruction as guidance', async () => {
+  const client = recorder({ hook: list('h') });
+  await generateMore({ ...base, client, likedTags: ['humor', 'short'], instruction: 'same idea but cheekier' });
   const prompt = client.calls[0].contents;
+  assert.match(prompt, /Lost a sock again\?/);
   assert.match(prompt, /Humor, Short/);
-  assert.doesNotMatch(prompt, /humor|short\b/);
-  assert.match(prompt, /more playful please/);
+  assert.match(prompt, /same idea but cheekier/);
+  assert.doesNotMatch(prompt, /\bhumor\b(?!,)/);
 });
 
-test('generateMore sends reject tags of rejected cards as negative hints', async () => {
-  const client = recorder({ hook: ten('h') });
+test('sends all existing texts as do-not-repeat', async () => {
+  const client = recorder({ on_screen_text: list('t') });
   await generateMore({
+    ...base,
     client,
-    model: 'm',
-    type: 'hook',
-    existingTexts: ['a'],
-    rejectedFeedback: [{ text: 'a very long rambling hook', rejectTag: 'too_long' }],
-  });
-  const prompt = client.calls[0].contents;
-  assert.match(prompt, /avoid/i);
-  assert.match(prompt, /a very long rambling hook.*Too long/);
-  assert.doesNotMatch(prompt, /too_long/);
-});
-
-test('generateMore sends all existing texts as do-not-repeat', async () => {
-  const client = recorder({ on_screen_text: ten('t') });
-  await generateMore({
-    client,
-    model: 'm',
     type: 'on_screen_text',
-    existingTexts: ['Never lose a sock', 'Pairs stay pairs'],
+    source: 'Never lose a sock',
+    existingTexts: ['Never lose a sock', 'Pairs stay pairs', 'Kept hook elsewhere'],
   });
   const prompt = client.calls[0].contents;
   assert.match(prompt, /do not repeat/i);
-  assert.match(prompt, /Never lose a sock/);
-  assert.match(prompt, /Pairs stay pairs/);
+  for (const text of ['Never lose a sock', 'Pairs stay pairs', 'Kept hook elsewhere']) {
+    assert.match(prompt, new RegExp(text));
+  }
+});
+
+test('mentions neither liked qualities nor an instruction when none are given', async () => {
+  const client = recorder({ hook: list('h') });
+  await generateMore({ ...base, client });
+  assert.doesNotMatch(client.calls[0].contents, /liked|instruction/i);
+});
+
+test('a custom type gets the 15-word limit in the prompt', async () => {
+  const client = recorder({ cta: list('c') });
+  await generateMore({ ...base, client, type: 'cta', source: 'Take the quiz' });
+  assert.match(JSON.stringify(client.calls[0].config.systemInstruction) + client.calls[0].contents, /cta[^"\\]*at most 15 words/i);
 });

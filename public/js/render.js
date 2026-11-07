@@ -1,6 +1,9 @@
+import { LIKED_TAGS } from './tags.js';
 import {
   canGenerate,
+  canSubmitMore,
   groupIdeas,
+  findIdeaById,
   keptLists,
   previewIdea,
   previewWarning,
@@ -57,6 +60,7 @@ function renderIdea(idea) {
     <span class="idea-actions">
       <button type="button" class="icon good" data-action="keep" data-id="${id}" title="Keep" aria-label="Keep">✓</button>
       <button type="button" class="icon bad" data-action="reject" data-id="${id}" title="Reject" aria-label="Reject">✕</button>
+      <button type="button" class="icon" data-action="more" data-id="${id}" title="More like this" aria-label="More like this">⋯</button>
     </span>
   </li>`;
 }
@@ -92,7 +96,7 @@ function renderRejected(state) {
 function renderKeptItem(idea) {
   const id = escapeHtml(idea.id);
   const type = escapeHtml(idea.type);
-  return `<li class="kept-item" draggable="true" data-idea-id="${id}" data-type="${type}"><span class="grip" aria-hidden="true">⋮⋮</span><span class="kept-text">${escapeHtml(idea.text)}</span><button type="button" class="icon" data-action="unkeep" data-id="${id}" title="Remove from kept" aria-label="Remove from kept">✕</button></li>`;
+  return `<li class="kept-item" draggable="true" data-idea-id="${id}" data-type="${type}"><span class="grip" aria-hidden="true">⋮⋮</span><span class="kept-text">${escapeHtml(idea.text)}</span><button type="button" class="icon" data-action="more" data-id="${id}" title="More like this" aria-label="More like this">⋯</button><button type="button" class="icon" data-action="unkeep" data-id="${id}" title="Remove from kept" aria-label="Remove from kept">✕</button></li>`;
 }
 
 export function renderPreviewBody(state) {
@@ -120,6 +124,31 @@ function renderError(state) {
   return state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : '';
 }
 
+function renderMoreModal(state) {
+  if (!state.more) return '';
+  const idea = findIdeaById(state, state.more.id);
+  const tags = LIKED_TAGS.map(({ id, label }) => {
+    const on = state.more.tags.includes(id);
+    return `<button type="button" class="${on ? 'chip on' : 'chip'}" data-action="more-tag" data-tag="${id}" aria-pressed="${on}">${label}</button>`;
+  }).join('');
+  const disabled = canSubmitMore(state) ? '' : ' disabled';
+  return `<div class="modal-backdrop" data-action="more-close" data-self>
+    <div class="modal" role="dialog" aria-label="More like this">
+      <h2>More like this</h2>
+      <p class="quote"><span class="badge">${escapeHtml(typeLabel(idea.type))}</span> ${escapeHtml(idea.text)}</p>
+      <span class="field-label">What did you like about it?</span>
+      <div class="chips">${tags}</div>
+      <label class="field-label" for="more-instruction">Instruction (optional)</label>
+      <input id="more-instruction" data-more-instruction value="${escapeHtml(state.more.instruction)}" placeholder="e.g. same idea, but funnier">
+      ${renderError(state)}
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-action="more-close">Cancel</button>
+        <button type="button" class="btn primary" data-action="more-submit"${disabled}>Generate ${state.count} more</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 export function renderWorkspace(state) {
-  return `<div class="workspace">${renderInputs(state)}<main class="review">${renderError(state)}${renderGroups(state)}${renderRejected(state)}</main>${renderKept(state)}</div>`;
+  return `<div class="workspace">${renderInputs(state)}<main class="review">${state.more ? '' : renderError(state)}${renderGroups(state)}${renderRejected(state)}</main>${renderKept(state)}${renderMoreModal(state)}</div>`;
 }

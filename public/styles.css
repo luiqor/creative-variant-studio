@@ -181,3 +181,33 @@ textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 
   .workspace { grid-template-columns: 1fr; }
   .panel, .panel.kept { border: 0; border-bottom: 1px solid var(--line); }
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, .45);
+  z-index: 20;
+}
+.modal {
+  width: min(460px, 92vw);
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .3);
+}
+.modal .quote { background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-top: 12px; }
+.modal .badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.modal .error { margin: 14px 0 0; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }

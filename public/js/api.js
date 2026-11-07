@@ -1,5 +1,5 @@
-export async function requestBatch(request, fetchFn = fetch) {
-  const response = await fetchFn('/api/generate', {
+async function postJson(url, request, fetchFn) {
+  const response = await fetchFn(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -10,3 +10,7 @@ export async function requestBatch(request, fetchFn = fetch) {
   if (!response.ok) throw new Error(body?.error || `Request failed (${response.status}).`);
   return body;
 }
+
+export const requestBatch = (request, fetchFn = fetch) => postJson('/api/generate', request, fetchFn);
+
+export const requestMore = (request, fetchFn = fetch) => postJson('/api/more-like-this', request, fetchFn);

@@ -21,6 +21,12 @@ import {
   setPreview,
   previewIdea,
   previewWarning,
+  openMore,
+  closeMore,
+  toggleMoreTag,
+  setMoreInstruction,
+  moreRequest,
+  canSubmitMore,
 } from '../public/js/workspace.js';
 
 const withScript = (state, script = 'Hook: hi') => ({ ...state, script });
@@ -252,4 +258,50 @@ test('an idea over the limit for its type warns, naming the limit', () => {
 
 test('an idea that does not fit the frame warns even when within the word limit', () => {
   assert.match(previewWarning(ideaOf('hook', 'Unbelievablyunmatchable')), /may not fit/i);
+});
+
+test('opening More like this remembers the chosen idea; an unknown idea changes nothing', () => {
+  const state = generated();
+  const opened = openMore(state, idOf(state, 'B'));
+  assert.deepEqual(opened.more, { id: idOf(state, 'B'), tags: [], instruction: '' });
+  assert.equal(openMore(state, 'nope'), state);
+});
+
+test('liked tags toggle on and off, unknown tags are ignored', () => {
+  const state = generated();
+  const opened = openMore(state, state.ideas[0].id);
+  const on = toggleMoreTag(toggleMoreTag(opened, 'humor'), 'short');
+  assert.deepEqual(on.more.tags, ['humor', 'short']);
+  assert.deepEqual(toggleMoreTag(on, 'humor').more.tags, ['short']);
+  assert.equal(toggleMoreTag(opened, 'spicy'), opened);
+  assert.equal(toggleMoreTag(state, 'humor'), state);
+});
+
+test('the request has the idea type, the chosen idea, all existing texts, the tags, the instruction and the count', () => {
+  const start = generated();
+  const withStates = rejectIdea(keepIdea(start, idOf(start, 'A')), idOf(start, 'T2'));
+  const opened = setMoreInstruction(toggleMoreTag(openMore({ ...withStates, count: 6 }, idOf(start, 'B')), 'humor'), '  cheekier ');
+  assert.deepEqual(moreRequest(opened), {
+    type: 'hook',
+    source: 'B',
+    texts: ['A', 'B', 'C', 'T1', 'T2'],
+    likedTags: ['humor'],
+    instruction: 'cheekier',
+    count: 6,
+  });
+});
+
+test('More like this can be sent only while it is open and nothing is running', () => {
+  const state = generated();
+  const opened = openMore(state, state.ideas[0].id);
+  assert.equal(canSubmitMore(opened), true);
+  assert.equal(canSubmitMore({ ...opened, loading: true }), false);
+  assert.equal(canSubmitMore(state), false);
+});
+
+test('closing More like this clears it', () => {
+  const state = generated();
+  const opened = openMore(state, state.ideas[0].id);
+  assert.notEqual(opened.more, null);
+  assert.equal(closeMore(opened).more, null);
 });

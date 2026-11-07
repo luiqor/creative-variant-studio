@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { requestBatch } from '../public/js/api.js';
+import { requestBatch, requestMore } from '../public/js/api.js';
 
 const respond = (status, body) => async () => ({ ok: status < 400, status, json: async () => body });
 
@@ -40,4 +40,22 @@ test('requestBatch throws a network message when fetch rejects', async () => {
     throw new TypeError('fetch failed');
   };
   await assert.rejects(requestBatch('x', fetchFn), { message: 'Could not reach the server.' });
+});
+
+test('requestMore posts the request to the more-like-this endpoint and returns the batch', async () => {
+  const calls = [];
+  const fetchFn = async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true, status: 200, json: async () => ({ hook: ['H'] }) };
+  };
+  const request = { type: 'hook', source: 'S', texts: ['S'], likedTags: [], instruction: '', count: 1 };
+  assert.deepEqual(await requestMore(request, fetchFn), { hook: ['H'] });
+  assert.equal(calls[0].url, '/api/more-like-this');
+  assert.deepEqual(JSON.parse(calls[0].init.body), request);
+});
+
+test('requestMore throws the server error message', async () => {
+  await assert.rejects(requestMore({}, respond(400, { error: 'Choose an idea first.' })), {
+    message: 'Choose an idea first.',
+  });
 });

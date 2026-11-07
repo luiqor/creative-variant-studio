@@ -1,18 +1,24 @@
 import { renderPreviewBody, renderWorkspace } from './render.js';
-import { requestBatch } from './api.js';
+import { requestBatch, requestMore } from './api.js';
 import {
   addType,
   applyBatch,
   canGenerate,
+  canSubmitMore,
+  closeMore,
   generateRequest,
   initialState,
   dropIndex,
   keepIdea,
+  moreRequest,
   moveKept,
+  openMore,
   rejectIdea,
   restoreIdea,
   setCount,
+  setMoreInstruction,
   setPreview,
+  toggleMoreTag,
   toggleType,
   unkeepIdea,
 } from './workspace.js';
@@ -39,7 +45,19 @@ function generate() {
     .catch((err) => update({ ...state, loading: false, error: err.message }));
 }
 
+function submitMore() {
+  if (!canSubmitMore(state)) return;
+  update({ ...state, loading: true, error: '' });
+  requestMore(moreRequest(state))
+    .then((batch) => update({ ...closeMore(applyBatch(state, batch)), loading: false }))
+    .catch((err) => update({ ...state, loading: false, error: err.message }));
+}
+
 const ACTIONS = {
+  more: (el) => update(openMore(state, el.dataset.id)),
+  'more-tag': (el) => update(toggleMoreTag(state, el.dataset.tag)),
+  'more-close': () => update(closeMore(state)),
+  'more-submit': submitMore,
   'toggle-type': (el) => update(toggleType(state, el.dataset.type)),
   'add-type': () => update(addType(state, root.querySelector('[data-new-type]').value)),
   'count-up': () => update(setCount(state, state.count + 1)),
@@ -53,11 +71,17 @@ const ACTIONS = {
 
 root.addEventListener('click', (event) => {
   const el = event.target.closest('[data-action]');
-  if (el && !el.disabled && ACTIONS[el.dataset.action]) ACTIONS[el.dataset.action](el);
+  if (!el || el.disabled || !ACTIONS[el.dataset.action]) return;
+  if (el.dataset.self !== undefined && event.target !== el) return;
+  ACTIONS[el.dataset.action](el);
 });
 
 root.addEventListener('input', (event) => {
-  const { field } = event.target.dataset;
+  const { field, moreInstruction } = event.target.dataset;
+  if (moreInstruction !== undefined) {
+    state = setMoreInstruction(state, event.target.value);
+    return;
+  }
   if (!field) return;
   state = { ...state, [field]: event.target.value };
   const button = root.querySelector('[data-action="generate"]');

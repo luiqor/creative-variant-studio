@@ -2,7 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { generateBatch, GenerationError, parseGenerateRequest } from './generation.js';
 import { setupEvents } from './events-route.js';
-import { generateMore, moreLikeThisParams } from './more-like-this.js';
+import { generateMore, parseMoreLikeThisRequest } from './more-like-this.js';
 
 function respondWithBatch(res, events, produce) {
   return produce()
@@ -29,9 +29,9 @@ export function createApp({ client, model, eventsPath } = {}) {
   });
 
   app.post('/api/more-like-this', (req, res) => {
-    const params = moreLikeThisParams(req.body?.cards, req.body?.cardId);
-    if (!params) return res.status(400).json({ error: 'Unknown card.' });
-    return respondWithBatch(res, events, () => generateMore({ client, model, ...params }));
+    const { value, error } = parseMoreLikeThisRequest(req.body);
+    if (error) return res.status(400).json({ error });
+    return respondWithBatch(res, events, () => generateMore({ client, model, ...value }));
   });
 
   return app;

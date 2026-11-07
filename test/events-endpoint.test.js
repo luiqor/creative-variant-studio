@@ -60,7 +60,7 @@ test('a successful /api/more-like-this also logs a generated event, so its cards
   const ten = Array.from({ length: 10 }, (_, i) => `h ${i}`);
   const client = { models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: { hook: ten } }] }) } };
   const server = createApp({ client, model: 'm', eventsPath: path }).listen(0);
-  const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cardId: 'c1', cards: [{ id: 'c1', type: 'hook', text: 'x', state: 'new' }] }) });
+  const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'hook', source: 'x', texts: ['x'], count: 10 }) });
   server.close();
   assert.equal(res.status, 200);
   assert.deepEqual(logged(path).map((e) => [e.type, e.count]), [['generated', 10]]);
