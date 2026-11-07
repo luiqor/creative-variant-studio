@@ -6,8 +6,12 @@ import {
   canGenerate,
   generateRequest,
   initialState,
+  keepIdea,
+  rejectIdea,
+  restoreIdea,
   setCount,
   toggleType,
+  unkeepIdea,
 } from './workspace.js';
 
 const root = document.getElementById('app');
@@ -37,6 +41,10 @@ const ACTIONS = {
   'add-type': () => update(addType(state, root.querySelector('[data-new-type]').value)),
   'count-up': () => update(setCount(state, state.count + 1)),
   'count-down': () => update(setCount(state, state.count - 1)),
+  keep: (el) => update(keepIdea(state, el.dataset.id)),
+  unkeep: (el) => update(unkeepIdea(state, el.dataset.id)),
+  reject: (el) => update(rejectIdea(state, el.dataset.id)),
+  restore: (el) => update(restoreIdea(state, el.dataset.id)),
   generate,
 };
 

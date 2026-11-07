@@ -1,4 +1,4 @@
-import { canGenerate, groupIdeas, typeLabel } from './workspace.js';
+import { canGenerate, groupIdeas, keptLists, rejectedIdeas, typeLabel } from './workspace.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
@@ -43,11 +43,21 @@ function renderInputs(state) {
 }
 
 function renderIdea(idea) {
-  return `<li class="idea" data-idea-id="${escapeHtml(idea.id)}"><span class="idea-text">${escapeHtml(idea.text)}</span></li>`;
+  const id = escapeHtml(idea.id);
+  return `<li class="idea" data-idea-id="${id}">
+    <span class="idea-text">${escapeHtml(idea.text)}</span>
+    <span class="idea-actions">
+      <button type="button" class="icon good" data-action="keep" data-id="${id}" title="Keep" aria-label="Keep">✓</button>
+      <button type="button" class="icon bad" data-action="reject" data-id="${id}" title="Reject" aria-label="Reject">✕</button>
+    </span>
+  </li>`;
 }
 
 function renderGroups(state) {
   const groups = groupIdeas(state);
+  if (groups.length === 0 && state.ideas.length > 0) {
+    return '<div class="empty"><h2>All ideas reviewed</h2><p>Keep the ones you want, or generate another batch.</p></div>';
+  }
   if (groups.length === 0) {
     return '<div class="empty"><h2>No ideas yet</h2><p>Paste a winning script, choose the idea types and press Generate.</p></div>';
   }
@@ -59,10 +69,39 @@ function renderGroups(state) {
     .join('');
 }
 
+function renderRejected(state) {
+  const rejected = rejectedIdeas(state);
+  if (rejected.length === 0) return '';
+  const rows = rejected
+    .map(
+      (idea) =>
+        `<li class="rejected-row"><span>${escapeHtml(idea.text)}</span><button type="button" class="link" data-action="restore" data-id="${escapeHtml(idea.id)}">Restore</button></li>`,
+    )
+    .join('');
+  return `<details class="rejected"><summary>Rejected (${rejected.length})</summary><ul>${rows}</ul></details>`;
+}
+
+function renderKeptItem(idea) {
+  const id = escapeHtml(idea.id);
+  return `<li class="kept-item" data-idea-id="${id}"><span class="kept-text">${escapeHtml(idea.text)}</span><button type="button" class="icon" data-action="unkeep" data-id="${id}" title="Remove from kept" aria-label="Remove from kept">✕</button></li>`;
+}
+
+function renderKept(state) {
+  const lists = keptLists(state);
+  if (lists.length === 0) return '<aside class="panel kept"><p class="hint">Kept ideas appear here.</p></aside>';
+  const groups = lists
+    .map(({ type, label, items }) => {
+      const body = items.length > 0 ? items.map(renderKeptItem).join('') : '<li class="empty-note">Nothing kept yet</li>';
+      return `<section class="kept-group" data-type="${escapeHtml(type)}"><h3>${escapeHtml(label)} <span class="count">${items.length}</span></h3><ol class="kept-list">${body}</ol></section>`;
+    })
+    .join('');
+  return `<aside class="panel kept"><h2>Kept</h2>${groups}</aside>`;
+}
+
 function renderError(state) {
   return state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : '';
 }
 
 export function renderWorkspace(state) {
-  return `<div class="workspace">${renderInputs(state)}<main class="review">${renderError(state)}${renderGroups(state)}</main></div>`;
+  return `<div class="workspace">${renderInputs(state)}<main class="review">${renderError(state)}${renderGroups(state)}${renderRejected(state)}</main>${renderKept(state)}</div>`;
 }

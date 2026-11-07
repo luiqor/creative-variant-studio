@@ -10,6 +10,12 @@ import {
   applyBatch,
   groupIdeas,
   typeLabel,
+  keepIdea,
+  unkeepIdea,
+  rejectIdea,
+  restoreIdea,
+  keptLists,
+  rejectedIdeas,
 } from '../public/js/workspace.js';
 
 const withScript = (state, script = 'Hook: hi') => ({ ...state, script });
@@ -107,4 +113,63 @@ test('type labels are readable', () => {
   assert.equal(typeLabel('on_screen_text'), 'On-screen text');
   assert.equal(typeLabel('cta'), 'CTA');
   assert.equal(typeLabel('voice_over'), 'Voice over');
+});
+
+const generated = () => applyBatch(initialState(), { hook: ['A', 'B', 'C'], on_screen_text: ['T1', 'T2'] });
+const idOf = (state, text) => state.ideas.find((i) => i.text === text).id;
+const reviewTexts = (state) => groupIdeas(state).flatMap((g) => g.items.map((i) => i.text));
+const keptTexts = (state, type) => keptLists(state).find((l) => l.type === type)?.items.map((i) => i.text) ?? [];
+
+test('keeping an idea moves it from review to the Kept list of its type, in kept order', () => {
+  const start = generated();
+  const state = keepIdea(keepIdea(start, idOf(start, 'C')), idOf(start, 'A'));
+  assert.deepEqual(keptTexts(state, 'hook'), ['C', 'A']);
+  assert.deepEqual(reviewTexts(state), ['B', 'T1', 'T2']);
+});
+
+test('Kept lists are separate per idea type', () => {
+  const start = generated();
+  const state = keepIdea(keepIdea(start, idOf(start, 'A')), idOf(start, 'T2'));
+  assert.deepEqual(keptTexts(state, 'hook'), ['A']);
+  assert.deepEqual(keptTexts(state, 'on_screen_text'), ['T2']);
+});
+
+test('keeping the same idea twice or an unknown idea changes nothing', () => {
+  const start = generated();
+  const kept = keepIdea(start, idOf(start, 'A'));
+  assert.equal(keepIdea(kept, idOf(start, 'A')), kept);
+  assert.equal(keepIdea(start, 'nope'), start);
+});
+
+test('removing a kept idea returns it to review and out of the Kept list', () => {
+  const start = generated();
+  const kept = keepIdea(start, idOf(start, 'A'));
+  const state = unkeepIdea(kept, idOf(start, 'A'));
+  assert.deepEqual(keptTexts(state, 'hook'), []);
+  assert.deepEqual(reviewTexts(state), ['A', 'B', 'C', 'T1', 'T2']);
+  assert.equal(unkeepIdea(start, idOf(start, 'A')), start);
+});
+
+test('rejecting removes an idea from review and from the Kept list, without a reason', () => {
+  const start = generated();
+  const kept = keepIdea(start, idOf(start, 'A'));
+  const state = rejectIdea(kept, idOf(start, 'A'));
+  assert.deepEqual(reviewTexts(state), ['B', 'C', 'T1', 'T2']);
+  assert.deepEqual(keptTexts(state, 'hook'), []);
+  assert.deepEqual(rejectedIdeas(state).map((i) => i.text), ['A']);
+  assert.equal(rejectIdea(state, idOf(start, 'A')), state);
+});
+
+test('restoring a rejected idea returns it to review', () => {
+  const start = generated();
+  const rejected = rejectIdea(start, idOf(start, 'B'));
+  const state = restoreIdea(rejected, idOf(start, 'B'));
+  assert.deepEqual(rejectedIdeas(state), []);
+  assert.deepEqual(reviewTexts(state), ['A', 'B', 'C', 'T1', 'T2']);
+  assert.equal(restoreIdea(start, idOf(start, 'B')), start);
+});
+
+test('a Kept list is shown for every type that has ideas, even when nothing is kept', () => {
+  assert.deepEqual(keptLists(generated()).map((l) => [l.type, l.items.length]), [['hook', 0], ['on_screen_text', 0]]);
+  assert.deepEqual(keptLists(initialState()), []);
 });
