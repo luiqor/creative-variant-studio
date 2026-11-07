@@ -127,6 +127,19 @@ textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 
   padding: 6px 6px 6px 12px;
   background: var(--panel);
 }
+.kept-item { cursor: grab; position: relative; }
+.kept-item .grip { color: #b4bac6; letter-spacing: -2px; }
+.kept-item.drop-before::before, .kept-item.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.kept-item.drop-before::before { top: -5px; }
+.kept-item.drop-after::after { bottom: -5px; }
 .kept-text { flex: 1; font-size: 14px; }
 .kept-item .icon { width: 24px; height: 24px; border-color: transparent; background: transparent; font-size: 12px; }
 .empty-note, .hint { color: var(--muted); font-size: 13px; padding: 6px 0; }

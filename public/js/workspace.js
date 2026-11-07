@@ -122,3 +122,21 @@ export function keptLists(state) {
 export function rejectedIdeas(state) {
   return state.ideas.filter((idea) => idea.status === 'rejected');
 }
+
+export function moveKept(state, type, id, toIndex) {
+  const list = state.kept[type] ?? [];
+  const from = list.indexOf(id);
+  if (from < 0) return state;
+  const target = Math.min(list.length - 1, Math.max(0, toIndex));
+  if (target === from) return state;
+  const rest = list.filter((x) => x !== id);
+  return { ...state, kept: { ...state.kept, [type]: [...rest.slice(0, target), id, ...rest.slice(target)] } };
+}
+
+export function dropIndex(list, id, targetId, after) {
+  const from = list.indexOf(id);
+  const at = list.indexOf(targetId);
+  if (from < 0 || at < 0 || id === targetId) return null;
+  const insert = after ? at + 1 : at;
+  return from < insert ? insert - 1 : insert;
+}

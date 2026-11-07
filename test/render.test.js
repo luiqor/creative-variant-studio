@@ -120,3 +120,13 @@ test('when every idea has been kept or rejected the review pane says so instead 
   assert.match(html, /All ideas reviewed/);
   assert.doesNotMatch(html, /No ideas yet/);
 });
+
+test('kept items are draggable and carry their type so they can only be dropped within it', () => {
+  const start = batch();
+  const state = keepIdea(keepIdea(start, idOf(start, 'H1')), idOf(start, 'T1'));
+  const html = renderWorkspace(state);
+  const id = idOf(start, 'H1');
+  assert.match(html, new RegExp(`<li class="kept-item" draggable="true" data-idea-id="${id}" data-type="hook"`));
+  assert.match(html, /<li class="kept-item" draggable="true" data-idea-id="[^"]+" data-type="on_screen_text"/);
+  assert.doesNotMatch(section(html, /<main class="review">[\s\S]*<\/main>/), /draggable/);
+});

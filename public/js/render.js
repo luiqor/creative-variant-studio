@@ -83,7 +83,8 @@ function renderRejected(state) {
 
 function renderKeptItem(idea) {
   const id = escapeHtml(idea.id);
-  return `<li class="kept-item" data-idea-id="${id}"><span class="kept-text">${escapeHtml(idea.text)}</span><button type="button" class="icon" data-action="unkeep" data-id="${id}" title="Remove from kept" aria-label="Remove from kept">✕</button></li>`;
+  const type = escapeHtml(idea.type);
+  return `<li class="kept-item" draggable="true" data-idea-id="${id}" data-type="${type}"><span class="grip" aria-hidden="true">⋮⋮</span><span class="kept-text">${escapeHtml(idea.text)}</span><button type="button" class="icon" data-action="unkeep" data-id="${id}" title="Remove from kept" aria-label="Remove from kept">✕</button></li>`;
 }
 
 function renderKept(state) {

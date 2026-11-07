@@ -6,7 +6,9 @@ import {
   canGenerate,
   generateRequest,
   initialState,
+  dropIndex,
   keepIdea,
+  moveKept,
   rejectIdea,
   restoreIdea,
   setCount,
@@ -59,6 +61,54 @@ root.addEventListener('input', (event) => {
   state = { ...state, [field]: event.target.value };
   const button = root.querySelector('[data-action="generate"]');
   button.disabled = !canGenerate(state);
+});
+
+const drag = { current: null };
+
+const clearDropMarks = () =>
+  root.querySelectorAll('.drop-before, .drop-after').forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+
+const isAfter = (event, item) => {
+  const rect = item.getBoundingClientRect();
+  return event.clientY > rect.top + rect.height / 2;
+};
+
+function dropTarget(event) {
+  const item = event.target.closest('.kept-item');
+  const valid = item && drag.current && item.dataset.type === drag.current.type && item.dataset.ideaId !== drag.current.id;
+  return valid ? item : null;
+}
+
+root.addEventListener('dragstart', (event) => {
+  const item = event.target.closest('.kept-item');
+  if (!item) return;
+  drag.current = { id: item.dataset.ideaId, type: item.dataset.type };
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', drag.current.id);
+});
+
+root.addEventListener('dragover', (event) => {
+  const target = dropTarget(event);
+  if (!target) return;
+  event.preventDefault();
+  clearDropMarks();
+  target.classList.add(isAfter(event, target) ? 'drop-after' : 'drop-before');
+});
+
+root.addEventListener('drop', (event) => {
+  const target = dropTarget(event);
+  clearDropMarks();
+  if (!target) return;
+  event.preventDefault();
+  const { id, type } = drag.current;
+  const index = dropIndex(state.kept[type] ?? [], id, target.dataset.ideaId, isAfter(event, target));
+  drag.current = null;
+  if (index !== null) update(moveKept(state, type, id, index));
+});
+
+root.addEventListener('dragend', () => {
+  clearDropMarks();
+  drag.current = null;
 });
 
 root.addEventListener('keydown', (event) => {

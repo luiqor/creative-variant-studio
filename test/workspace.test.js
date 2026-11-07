@@ -16,6 +16,8 @@ import {
   restoreIdea,
   keptLists,
   rejectedIdeas,
+  moveKept,
+  dropIndex,
 } from '../public/js/workspace.js';
 
 const withScript = (state, script = 'Hook: hi') => ({ ...state, script });
@@ -172,4 +174,47 @@ test('restoring a rejected idea returns it to review', () => {
 test('a Kept list is shown for every type that has ideas, even when nothing is kept', () => {
   assert.deepEqual(keptLists(generated()).map((l) => [l.type, l.items.length]), [['hook', 0], ['on_screen_text', 0]]);
   assert.deepEqual(keptLists(initialState()), []);
+});
+
+const keptThree = () => {
+  const start = applyBatch(initialState(), { hook: ['A', 'B', 'C', 'D'], on_screen_text: ['T1', 'T2'] });
+  return ['A', 'B', 'C', 'D', 'T1', 'T2'].reduce((state, text) => keepIdea(state, idOf(start, text)), start);
+};
+
+test('moving a kept idea puts it at the given position within its type', () => {
+  const state = keptThree();
+  assert.deepEqual(keptTexts(moveKept(state, 'hook', idOf(state, 'D'), 0), 'hook'), ['D', 'A', 'B', 'C']);
+  assert.deepEqual(keptTexts(moveKept(state, 'hook', idOf(state, 'A'), 3), 'hook'), ['B', 'C', 'D', 'A']);
+  assert.deepEqual(keptTexts(moveKept(state, 'hook', idOf(state, 'B'), 2), 'hook'), ['A', 'C', 'B', 'D']);
+});
+
+test('the position is clamped to the ends of the list', () => {
+  const state = keptThree();
+  assert.deepEqual(keptTexts(moveKept(state, 'hook', idOf(state, 'A'), 99), 'hook'), ['B', 'C', 'D', 'A']);
+  assert.deepEqual(keptTexts(moveKept(state, 'hook', idOf(state, 'D'), -5), 'hook'), ['D', 'A', 'B', 'C']);
+});
+
+test('reordering one type never changes another type', () => {
+  const state = keptThree();
+  const moved = moveKept(state, 'hook', idOf(state, 'D'), 0);
+  assert.deepEqual(keptTexts(moved, 'on_screen_text'), ['T1', 'T2']);
+});
+
+test('moving across types, an idea that is not kept, or to its own position changes nothing', () => {
+  const state = keptThree();
+  assert.equal(moveKept(state, 'hook', idOf(state, 'T1'), 0), state);
+  assert.equal(moveKept(state, 'hook', 'nope', 0), state);
+  assert.equal(moveKept(state, 'cta', idOf(state, 'A'), 0), state);
+  assert.equal(moveKept(state, 'hook', idOf(state, 'B'), 1), state);
+});
+
+test('dropIndex turns "drop before or after a target" into the final position', () => {
+  const list = ['a', 'b', 'c', 'd'];
+  assert.equal(dropIndex(list, 'a', 'c', true), 2);
+  assert.equal(dropIndex(list, 'd', 'b', false), 1);
+  assert.equal(dropIndex(list, 'b', 'c', false), 1);
+  assert.equal(dropIndex(list, 'c', 'b', true), 2);
+  assert.equal(dropIndex(list, 'a', 'a', true), null);
+  assert.equal(dropIndex(list, 'a', 'zzz', true), null);
+  assert.equal(dropIndex(list, 'zzz', 'a', true), null);
 });
