@@ -78,8 +78,7 @@ var CSV_DATA = "";
     " comps in \"Screen Text\" from \"" +
     template.name +
     "\"?\n\n" +
-    mapLines.join("\n") +
-    "\nOther mapped text layers are hidden in each piece.";
+    mapLines.join("\n");
   var missing = unmatchedHeaders(pairs, headers);
   if (missing.length) {
     msg += "\n\nNo text layer found for: " + missing.join(", ") + ". Rename a text layer in the template to match, then run again.";
@@ -294,8 +293,6 @@ function makePieceComp(template, row, rowIndex, pair, allPairs, folder, prefix, 
       } else {
         centerLayerInComp(layer, dup);
       }
-    } else {
-      layer.enabled = false;
     }
   }
   stats.made++;
