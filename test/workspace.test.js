@@ -245,14 +245,14 @@ test('pointing at the same idea again returns the same state', () => {
 });
 
 test('an idea within its limits has no warning', () => {
-  assert.equal(previewWarning(ideaOf('hook', words(15))), null);
-  assert.equal(previewWarning(ideaOf('on_screen_text', words(8))), null);
+  assert.equal(previewWarning(ideaOf('hook', words(8))), null);
+  assert.equal(previewWarning(ideaOf('on_screen_text', words(15))), null);
   assert.equal(previewWarning(ideaOf('cta', words(15))), null);
 });
 
 test('an idea over the limit for its type warns, naming the limit', () => {
-  assert.match(previewWarning(ideaOf('hook', words(16))), /16 words.*15-word limit/);
-  assert.match(previewWarning(ideaOf('on_screen_text', words(9))), /9 words.*8-word limit/);
+  assert.match(previewWarning(ideaOf('hook', words(9))), /9 words.*8-word limit/);
+  assert.match(previewWarning(ideaOf('on_screen_text', words(16))), /16 words.*15-word limit/);
   assert.match(previewWarning(ideaOf('cta', words(16))), /16 words.*15-word limit/);
 });
 

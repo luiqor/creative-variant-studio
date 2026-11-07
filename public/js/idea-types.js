@@ -5,7 +5,7 @@ export const DEFAULT_COUNT = 10;
 export const MIN_COUNT = 1;
 export const MAX_COUNT = 30;
 
-export const WORD_LIMITS = Object.freeze({ hook: 15, on_screen_text: 8 });
+export const WORD_LIMITS = Object.freeze({ hook: 8, on_screen_text: 15 });
 export const DEFAULT_WORD_LIMIT = 15;
 
 export const wordLimit = (type, limits = WORD_LIMITS) => limits[type] ?? DEFAULT_WORD_LIMIT;

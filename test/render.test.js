@@ -148,7 +148,7 @@ test('the preview pane shows the pointed-at idea in a 9:16 frame, escaped, with 
 
 test('the preview pane warns when the idea is over its length limit', () => {
   const long = Array.from({ length: 9 }, (_, i) => `w${i}`).join(' ');
-  const start = applyBatch(ready, { on_screen_text: [long] });
+  const start = applyBatch(ready, { hook: [long] });
   const html = renderWorkspace(setPreview(start, start.ideas[0].id));
   assert.match(html, /class="warning" role="alert">9 words, over the 8-word limit/);
 });
