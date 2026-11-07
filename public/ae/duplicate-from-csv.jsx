@@ -80,6 +80,10 @@ var CSV_DATA = "";
     "\"?\n\n" +
     mapLines.join("\n") +
     "\nOther mapped text layers are hidden in each piece.";
+  var missing = unmatchedHeaders(pairs, headers);
+  if (missing.length) {
+    msg += "\n\nNo text layer found for: " + missing.join(", ") + ". Rename a text layer in the template to match, then run again.";
+  }
   if (skipped) {
     msg += "\nSkipped " + skipped + " empty rows.";
   }
@@ -128,7 +132,7 @@ function cleanHeader(s) {
 }
 
 function normName(s) {
-  return cleanHeader(s).toLowerCase();
+  return trim(cleanHeader(s).toLowerCase().replace(/[_\-]+/g, " ").replace(/\s+/g, " "));
 }
 
 function rowIsEmpty(row) {
@@ -197,6 +201,21 @@ function mapColumnsToLayers(layers, headers) {
     pairs.push({ header: headers[i], col: i, layerName: layers[i].name, byOrder: true });
   }
   return pairs;
+}
+
+function unmatchedHeaders(pairs, headers) {
+  var matched = {};
+  var missing = [];
+  var i;
+  for (i = 0; i < pairs.length; i++) {
+    matched[pairs[i].col] = true;
+  }
+  for (i = 0; i < headers.length; i++) {
+    if (headers[i] !== "" && !matched[i]) {
+      missing.push(headers[i]);
+    }
+  }
+  return missing;
 }
 
 function isHookHeader(header) {
