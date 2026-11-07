@@ -216,3 +216,25 @@ test('Export offers the AE script as the main button and CSV and JSON in a menu 
   assert.match(html, /<details class="menu">[\s\S]*data-action="export-csv">CSV<[\s\S]*data-action="export-json">JSON</);
   assert.doesNotMatch(html, /disabled/);
 });
+
+const withToken = (state, token) => ({ ...state, token: { ...state.token, ...token } });
+
+test('a missing token shows the token screen instead of the workspace', () => {
+  const html = renderWorkspace(withToken(ready, { required: true, configured: false }));
+  assert.match(html, /<input[^>]*type="password"[^>]*data-token-input/);
+  assert.match(html, /data-action="save-token"[^>]*>Save token</);
+  assert.doesNotMatch(html, /data-action="generate"/);
+  assert.doesNotMatch(html, /data-action="cancel-token"/);
+});
+
+test('the token screen shows progress, an error, and a Cancel button when replacing a token', () => {
+  const html = renderWorkspace(withToken(ready, { required: true, configured: true, editing: true, saving: true, error: 'Bad <token>' }));
+  assert.match(html, /data-action="save-token" disabled[^>]*>Saving/);
+  assert.match(html, /role="alert"[^>]*>Bad &lt;token&gt;/);
+  assert.match(html, /data-action="cancel-token"/);
+});
+
+test('the workspace offers Change token only when the app manages the token', () => {
+  assert.match(renderWorkspace(withToken(ready, { required: true, configured: true })), /data-action="change-token"/);
+  assert.doesNotMatch(renderWorkspace(ready), /change-token/);
+});

@@ -1,6 +1,15 @@
 import { renderPreviewBody, renderWorkspace } from './render.js';
-import { requestBatch, requestMore } from './api.js';
+import { getTokenStatus, requestBatch, requestMore, saveToken } from './api.js';
 import { createSession } from './session.js';
+import {
+  applyTokenStatus,
+  cancelTokenEdit,
+  editToken,
+  startSavingToken,
+  tokenFailed,
+  tokenRejected,
+  tokenSaved,
+} from './token.js';
 import { eventForAction, exportEvent, feedbackEvent, reportEvent } from './events.js';
 import { buildAeScript, hasKept, jsonExport, wideCsv } from './export.js';
 import {
@@ -46,12 +55,22 @@ function update(next) {
   render();
 }
 
+const TOKEN_CODES = ['token_missing', 'token_rejected'];
+
+function handleRequestError(err) {
+  if (TOKEN_CODES.includes(err.code)) {
+    update(tokenRejected(state, err.message));
+    return;
+  }
+  update({ ...state, loading: false, error: err.message });
+}
+
 function generate() {
   if (!canGenerate(state)) return;
   update({ ...state, loading: true, error: '' });
   requestBatch(generateRequest(state))
     .then((batch) => update({ ...applyBatch(state, batch), loading: false }))
-    .catch((err) => update({ ...state, loading: false, error: err.message }));
+    .catch(handleRequestError);
 }
 
 function submitMore() {
@@ -60,7 +79,7 @@ function submitMore() {
   update({ ...state, loading: true, error: '' });
   requestMore(moreRequest(state))
     .then((batch) => update({ ...closeMore(applyBatch(state, batch)), loading: false }))
-    .catch((err) => update({ ...state, loading: false, error: err.message }));
+    .catch(handleRequestError);
 }
 
 function download(filename, text, type) {
@@ -91,12 +110,27 @@ function exportFile(filename, build, type, format) {
   track(exportEvent(state, format));
 }
 
+function submitToken() {
+  const value = root.querySelector('[data-token-input]')?.value.trim() ?? '';
+  if (!value) {
+    update(tokenFailed(state, 'Paste your Gemini token.'));
+    return;
+  }
+  update(startSavingToken(state));
+  saveToken(value)
+    .then(() => update(tokenSaved(state)))
+    .catch((err) => update(tokenFailed(state, err.message)));
+}
+
 function startNewScript() {
   session.clear();
   update(newScript());
 }
 
 const ACTIONS = {
+  'change-token': () => update(editToken(state)),
+  'cancel-token': () => update(cancelTokenEdit(state)),
+  'save-token': submitToken,
   'export-jsx': () => hasKept(state) && exportAeScript(),
   'export-csv': () => exportFile('ideas.csv', wideCsv, 'text/csv', 'csv'),
   'export-json': () => exportFile('ideas.json', jsonExport, 'application/json', 'json'),
@@ -199,9 +233,16 @@ root.addEventListener('dragend', () => {
 });
 
 root.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && event.target.matches('[data-new-type]')) {
-    update(addType(state, event.target.value));
-  }
+  if (event.key !== 'Enter') return;
+  if (event.target.matches('[data-new-type]')) update(addType(state, event.target.value));
+  if (event.target.matches('[data-token-input]')) submitToken();
 });
 
-render();
+getTokenStatus()
+  .then((status) => {
+    state = applyTokenStatus(state, status);
+  })
+  .catch(() => {
+    state = { ...state, error: 'Could not reach the server.' };
+  })
+  .finally(render);

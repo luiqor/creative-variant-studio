@@ -1,20 +1,36 @@
 import 'dotenv/config';
 import path from 'node:path';
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, safeStorage } from 'electron';
 import { GoogleGenAI } from '@google/genai';
 import { startServer } from '../src/server.js';
+import { createTokenService } from '../src/tokens.js';
+import { createTokenStore } from './token-store.js';
 import { isAppUrl, windowOptions } from './window.js';
 
 const smokeTest = process.argv.includes('--smoke-test');
-const apiKey = (process.env.GEMINI_API_KEY ?? '').trim();
-const client = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const WAIT_FOR_HEADING = `new Promise((resolve) => {
+  const timer = setInterval(() => {
+    const heading = document.querySelector('h1');
+    if (heading) {
+      clearInterval(timer);
+      resolve(heading.textContent);
+    }
+  }, 50);
+  setTimeout(() => resolve(''), 5000);
+})`;
 const model = process.env.MODEL || 'gemini-3.5-flash-lite';
 
 app.whenReady().then(async () => {
+  const userData = app.getPath('userData');
+  const tokens = createTokenService({
+    store: createTokenStore({ safeStorage, file: path.join(userData, 'token.bin') }),
+    createClient: (apiKey) => new GoogleGenAI({ apiKey }),
+    env: process.env,
+  });
   const server = await startServer({
-    client,
+    tokens,
     model,
-    eventsPath: path.join(app.getPath('userData'), 'events.jsonl'),
+    eventsPath: path.join(userData, 'events.jsonl'),
   });
   app.on('before-quit', () => server.close());
 
@@ -27,7 +43,7 @@ app.whenReady().then(async () => {
   if (smokeTest) {
     win.webContents.on('did-finish-load', () => {
       win.webContents
-        .executeJavaScript("document.querySelector('h1')?.textContent ?? ''")
+        .executeJavaScript(WAIT_FOR_HEADING)
         .then((title) => process.stdout.write(`SMOKE_OK ${title}\n`))
         .catch((err) => process.stdout.write(`SMOKE_FAIL ${err.message}\n`))
         .finally(() => app.quit());

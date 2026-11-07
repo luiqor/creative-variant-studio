@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateBatch, GenerationError } from '../src/generation.js';
+import { generateBatch, GenerationError, TokenRejectedError } from '../src/generation.js';
 
 const list = (prefix, n = 10) => Array.from({ length: n }, (_, i) => `${prefix} ${i}`);
 
@@ -109,5 +109,32 @@ test('an SDK error is retried once, then reported as GenerationError', async () 
     generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 2 }),
     GenerationError,
   );
+  assert.equal(client.calls.length, 2);
+});
+
+test('a token rejected by Gemini is reported as such, without retrying', async () => {
+  const unauthorized = Object.assign(new Error('Unauthorized'), { status: 401 });
+  const client = stubClient([unauthorized]);
+  await assert.rejects(
+    generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 2 }),
+    TokenRejectedError,
+  );
+  assert.equal(client.calls.length, 1);
+});
+
+test('an invalid API key message from Gemini is recognised as a rejected token', async () => {
+  const invalid = Object.assign(new Error('API key not valid. Please pass a valid API key.'), { status: 400 });
+  await assert.rejects(
+    generateBatch({ client: stubClient([invalid]), model: 'm', script: 's', types: ['hook'], count: 2 }),
+    TokenRejectedError,
+  );
+});
+
+test('other model errors are still retried once and reported as a generation error', async () => {
+  const busy = Object.assign(new Error('Service unavailable'), { status: 503 });
+  const client = stubClient([busy]);
+  const error = await generateBatch({ client, model: 'm', script: 's', types: ['hook'], count: 2 }).catch((e) => e);
+  assert.ok(error instanceof GenerationError);
+  assert.ok(!(error instanceof TokenRejectedError));
   assert.equal(client.calls.length, 2);
 });

@@ -8,6 +8,13 @@ export const MAX_NOTE_LENGTH = 500;
 
 export class GenerationError extends Error {}
 
+export class TokenRejectedError extends GenerationError {}
+
+const TOKEN_REJECTED = Symbol('token rejected');
+const AUTH_FAILURE = /API key not valid|API_KEY_INVALID|UNAUTHENTICATED|PERMISSION_DENIED/i;
+
+export const isAuthError = (err) => [401, 403].includes(err?.status) || AUTH_FAILURE.test(err?.message ?? '');
+
 export function parseGenerateRequest(body) {
   const script = typeof body?.script === 'string' ? body.script.trim() : '';
   if (!script) return { error: 'Paste a winning script first.' };
@@ -95,7 +102,10 @@ export async function requestIdeas({ client, model, system, userPrompt, fields }
           },
         },
       })
-      .catch(() => null);
+      .catch((err) => (isAuthError(err) ? TOKEN_REJECTED : null));
+    if (response === TOKEN_REJECTED) {
+      throw new TokenRejectedError('Gemini rejected the token. Check it and enter it again.');
+    }
     const call = response?.functionCalls?.find((c) => c.name === TOOL_NAME);
     const valid = validate(call?.args, fields);
     if (valid) return valid;

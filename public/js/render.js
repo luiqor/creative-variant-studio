@@ -1,4 +1,5 @@
 import { hasKept } from './export.js';
+import { needsTokenScreen } from './token.js';
 import { LIKED_TAGS } from './tags.js';
 import {
   canGenerate,
@@ -41,6 +42,7 @@ function renderInputs(state) {
       <h1>Idea Generator</h1>
       <button type="button" class="btn ghost small" data-action="new-script">New script</button>
     </div>
+    ${state.token.required ? '<button type="button" class="link change-token" data-action="change-token">Change token</button>' : ''}
     <label class="field-label" for="script">Winning script</label>
     <textarea id="script" data-field="script" rows="11" placeholder="Paste the winning script here">${escapeHtml(state.script)}</textarea>
     <span class="field-label">Idea types</span>
@@ -167,6 +169,23 @@ function renderMoreModal(state) {
   </div>`;
 }
 
+function renderTokenScreen(state) {
+  const { saving, error, editing } = state.token;
+  const message = error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : '';
+  const cancel = editing ? '<button type="button" class="btn ghost" data-action="cancel-token">Cancel</button>' : '';
+  const disabled = saving ? ' disabled' : '';
+  const label = saving ? 'Saving…' : 'Save token';
+  return `<main class="token-screen">
+    <h1>Add your Gemini token</h1>
+    <p class="muted">The token is stored encrypted on this computer and is only used to ask Gemini for ideas.</p>
+    <label class="field-label" for="token">Gemini token</label>
+    <input id="token" type="password" data-token-input autocomplete="off" spellcheck="false" placeholder="Paste your token here">
+    ${message}
+    <div class="modal-actions">${cancel}<button type="button" class="btn primary" data-action="save-token"${disabled}>${label}</button></div>
+  </main>`;
+}
+
 export function renderWorkspace(state) {
+  if (needsTokenScreen(state)) return renderTokenScreen(state);
   return `<div class="workspace">${renderInputs(state)}<main class="review">${state.more ? '' : renderError(state)}${renderGroups(state)}${renderRejected(state)}</main>${renderKept(state)}${renderMoreModal(state)}</div>`;
 }

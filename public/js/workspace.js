@@ -10,6 +10,7 @@ import {
 } from './idea-types.js';
 import { fitsSafeZone } from './safe-zone.js';
 import { LIKED_TAGS } from './tags.js';
+import { initialToken } from './token.js';
 
 export { typeLabel };
 
@@ -26,6 +27,7 @@ export function initialState() {
     kept: {},
     previewId: null,
     more: null,
+    token: initialToken(),
     loading: false,
     error: '',
   };

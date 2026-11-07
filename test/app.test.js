@@ -142,3 +142,101 @@ test('serves the AE script template for the export', async () => {
   assert.equal(res.status, 200);
   assert.match(text, /\/\/ DATA-BEGIN/);
 });
+
+function fakeTokens({ client = null } = {}) {
+  const saved = [];
+  return {
+    saved,
+    getClient: () => client,
+    configured: () => client !== null,
+    save: (token) => {
+      saved.push(token);
+      client = stub({ hook: ['a'] });
+    },
+  };
+}
+
+async function call(options, path, init) {
+  const server = createApp({ model: 'm', ...options }).listen(0);
+  const res = await fetch(`http://localhost:${server.address().port}${path}`, init);
+  const text = await res.text();
+  server.close();
+  const isJson = text.startsWith('{');
+  return { status: res.status, json: isJson ? JSON.parse(text) : null };
+}
+
+const json = (method, body) => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+test('GET /api/token says no token is needed when the server has its own client', async () => {
+  const { status, json: body } = await call({ client: stub({}) }, '/api/token');
+  assert.equal(status, 200);
+  assert.deepEqual(body, { required: false, configured: true });
+});
+
+test('GET /api/token says a token is required and whether one is set', async () => {
+  assert.deepEqual((await call({ tokens: fakeTokens() }, '/api/token')).json, { required: true, configured: false });
+  const set = fakeTokens({ client: stub({}) });
+  assert.deepEqual((await call({ tokens: set }, '/api/token')).json, { required: true, configured: true });
+});
+
+test('PUT /api/token saves the token and never sends it back', async () => {
+  const tokens = fakeTokens();
+  const { status, json: body } = await call({ tokens }, '/api/token', json('PUT', { token: '  AIza-secret ' }));
+  assert.equal(status, 200);
+  assert.deepEqual(body, { configured: true });
+  assert.deepEqual(tokens.saved, ['AIza-secret']);
+});
+
+for (const [name, body] of [['an empty token', { token: '  ' }], ['a missing token', {}], ['a non-text token', { token: 5 }], ['a huge token', { token: 'x'.repeat(600) }]]) {
+  test(`PUT /api/token rejects ${name} with 400`, async () => {
+    const tokens = fakeTokens();
+    const { status, json: reply } = await call({ tokens }, '/api/token', json('PUT', body));
+    assert.equal(status, 400);
+    assert.ok(reply.error);
+    assert.deepEqual(tokens.saved, []);
+  });
+}
+
+test('PUT /api/token reports a clear error when the token cannot be stored', async () => {
+  const tokens = { ...fakeTokens(), save: () => { throw new Error('Encryption is not available'); } };
+  const { status, json: reply } = await call({ tokens }, '/api/token', json('PUT', { token: 'x' }));
+  assert.equal(status, 500);
+  assert.match(reply.error, /Encryption is not available/);
+});
+
+test('PUT /api/token does not exist when the server has no token service', async () => {
+  const { status } = await call({ client: stub({}) }, '/api/token', json('PUT', { token: 'x' }));
+  assert.equal(status, 404);
+});
+
+test('generating without a token asks for one', async () => {
+  const { status, json: reply } = await call({ tokens: fakeTokens() }, '/api/generate', json('POST', { script: 's', types: ['hook'] }));
+  assert.equal(status, 401);
+  assert.equal(reply.code, 'token_missing');
+  assert.match(reply.error, /token/i);
+  const more = await call({ tokens: fakeTokens() }, '/api/more-like-this', json('POST', { type: 'hook', source: 's', texts: [] }));
+  assert.equal(more.status, 401);
+  assert.equal(more.json.code, 'token_missing');
+});
+
+test('after a token is saved, generating uses it', async () => {
+  const tokens = fakeTokens();
+  const server = createApp({ model: 'm', tokens }).listen(0);
+  const base = `http://localhost:${server.address().port}`;
+  await fetch(`${base}/api/token`, json('PUT', { token: 'k' }));
+  const res = await fetch(`${base}/api/generate`, json('POST', { script: 's', types: ['hook'], count: 1 }));
+  const body = await res.json();
+  server.close();
+  assert.equal(res.status, 200);
+  assert.deepEqual(body, { hook: ['a'] });
+});
+
+test('a token rejected by Gemini is reported so the designer can replace it', async () => {
+  const rejecting = {
+    models: { generateContent: async () => { throw Object.assign(new Error('Unauthorized'), { status: 401 }); } },
+  };
+  const { status, json: reply } = await call({ tokens: fakeTokens({ client: rejecting }) }, '/api/generate', json('POST', { script: 's', types: ['hook'], count: 1 }));
+  assert.equal(status, 401);
+  assert.equal(reply.code, 'token_rejected');
+  assert.match(reply.error, /token/i);
+});
