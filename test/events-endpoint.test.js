@@ -39,7 +39,7 @@ test('POST /api/events rejects unknown types and does not log them', async () =>
 test('a successful /api/generate logs a generated event with the card count; a failure logs nothing', async () => {
   const path = eventsPath();
   const ten = (p) => Array.from({ length: 10 }, (_, i) => `${p} ${i}`);
-  const stub = (input) => ({ messages: { create: async () => ({ content: [{ type: 'tool_use', name: 'submit_ideas', input }] }) } });
+  const stub = (input) => ({ models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: input }] }) } });
   const generate = async (app, script) => {
     const server = app.listen(0);
     const res = await fetch(`http://localhost:${server.address().port}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ script }) });
@@ -58,7 +58,7 @@ test('a successful /api/generate logs a generated event with the card count; a f
 test('a successful /api/more-like-this also logs a generated event, so its cards count in the denominator', async () => {
   const path = eventsPath();
   const ten = Array.from({ length: 10 }, (_, i) => `h ${i}`);
-  const client = { messages: { create: async () => ({ content: [{ type: 'tool_use', name: 'submit_ideas', input: { hooks: ten } }] }) } };
+  const client = { models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: { hooks: ten } }] }) } };
   const server = createApp({ client, model: 'm', eventsPath: path }).listen(0);
   const res = await fetch(`http://localhost:${server.address().port}/api/more-like-this`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cardId: 'c1', cards: [{ id: 'c1', type: 'hook', text: 'x', state: 'new' }] }) });
   server.close();

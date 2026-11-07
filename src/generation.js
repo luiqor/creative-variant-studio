@@ -14,18 +14,19 @@ export const FIELD_LABELS = {
 
 function buildTool(fields) {
   return {
-    name: TOOL_NAME,
-    description: 'Submit the generated ideas.',
-    input_schema: {
-      type: 'object',
-      properties: Object.fromEntries(
-        Object.entries(fields).map(([name, count]) => [
-          name,
-          { type: 'array', items: { type: 'string' }, minItems: count, maxItems: count },
-        ]),
-      ),
-      required: Object.keys(fields),
-    },
+    functionDeclarations: [
+      {
+        name: TOOL_NAME,
+        description: 'Submit the generated ideas.',
+        parametersJsonSchema: {
+          type: 'object',
+          properties: Object.fromEntries(
+            Object.keys(fields).map((name) => [name, { type: 'array', items: { type: 'string' } }]),
+          ),
+          required: Object.keys(fields),
+        },
+      },
+    ],
   };
 }
 
@@ -47,29 +48,32 @@ function validate(input, fields) {
 }
 
 /**
- * Shared tool-use + retry core. Reused by "More like this":
+ * Shared function-calling + retry core. Reused by "More like this":
  * pass fewer `fields` (e.g. { hooks: 10 }) and put extra guidance /
  * do-not-repeat / negative hints into `userPrompt`.
- * The server only ever reads the tool_use block, never prose.
+ * The server only ever reads the function call args, never prose.
+ * Array sizes are not in the schema (Gemini docs advise stating bounds in the prompt
+ * and checking them in code); `validate` enforces the counts.
  */
 export async function requestIdeas({ client, model, system, userPrompt, fields }) {
   const tool = buildTool(fields);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    let response;
-    try {
-      response = await client.messages.create({
+    const response = await client.models
+      .generateContent({
         model,
-        max_tokens: 2048,
-        system,
-        messages: [{ role: 'user', content: userPrompt }],
-        tools: [tool],
-        tool_choice: { type: 'tool', name: TOOL_NAME },
-      });
-    } catch {
-      continue;
-    }
-    const block = response?.content?.find((b) => b.type === 'tool_use' && b.name === TOOL_NAME);
-    const valid = validate(block?.input, fields);
+        contents: userPrompt,
+        config: {
+          systemInstruction: system,
+          maxOutputTokens: 2048,
+          tools: [tool],
+          toolConfig: {
+            functionCallingConfig: { mode: 'ANY', allowedFunctionNames: [TOOL_NAME] },
+          },
+        },
+      })
+      .catch(() => null);
+    const call = response?.functionCalls?.find((c) => c.name === TOOL_NAME);
+    const valid = validate(call?.args, fields);
     if (valid) return valid;
   }
   throw new GenerationError('The model returned an invalid response twice. Please try again.');
@@ -83,7 +87,7 @@ export function buildSystemPrompt(limits = LIMITS) {
     'Length limits:',
     `- each hook: at most ${limits.hookMaxWords} words`,
     `- each on-screen text: at most ${limits.onScreenTextMaxWords} words`,
-    `Always answer by calling the ${TOOL_NAME} tool.`,
+    `Always answer by calling the ${TOOL_NAME} function.`,
   ].join('\n');
 }
 

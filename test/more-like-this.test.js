@@ -7,10 +7,10 @@ function recorder(input) {
   const calls = [];
   return {
     calls,
-    messages: {
-      create: async (params) => {
+    models: {
+      generateContent: async (params) => {
         calls.push(params);
-        return { content: [{ type: 'tool_use', name: 'submit_ideas', input }] };
+        return { functionCalls: [{ name: 'submit_ideas', args: input }] };
       },
     },
   };
@@ -20,7 +20,7 @@ test('generateMore returns 10 hooks only, with a single-field schema, for a hook
   const client = recorder({ hooks: ten('h') });
   const out = await generateMore({ client, model: 'm', type: 'hook', existingTexts: [] });
   assert.deepEqual(out, { hooks: ten('h') });
-  const schema = client.calls[0].tools[0].input_schema;
+  const schema = client.calls[0].config.tools[0].functionDeclarations[0].parametersJsonSchema;
   assert.deepEqual(Object.keys(schema.properties), ['hooks']);
 });
 
@@ -34,7 +34,7 @@ test('generateMore sends the liked tags and comment as guidance', async () => {
     likedTags: ['humor', 'short'],
     comment: 'more playful please',
   });
-  const prompt = client.calls[0].messages[0].content;
+  const prompt = client.calls[0].contents;
   assert.match(prompt, /Humor, Short/);
   assert.doesNotMatch(prompt, /humor|short\b/);
   assert.match(prompt, /more playful please/);
@@ -49,7 +49,7 @@ test('generateMore sends reject tags of rejected cards as negative hints', async
     existingTexts: ['a'],
     rejectedFeedback: [{ text: 'a very long rambling hook', rejectTag: 'too_long' }],
   });
-  const prompt = client.calls[0].messages[0].content;
+  const prompt = client.calls[0].contents;
   assert.match(prompt, /avoid/i);
   assert.match(prompt, /a very long rambling hook.*Too long/);
   assert.doesNotMatch(prompt, /too_long/);
@@ -63,7 +63,7 @@ test('generateMore sends all existing texts as do-not-repeat', async () => {
     type: 'on_screen_text',
     existingTexts: ['Never lose a sock', 'Pairs stay pairs'],
   });
-  const prompt = client.calls[0].messages[0].content;
+  const prompt = client.calls[0].contents;
   assert.match(prompt, /do not repeat/i);
   assert.match(prompt, /Never lose a sock/);
   assert.match(prompt, /Pairs stay pairs/);

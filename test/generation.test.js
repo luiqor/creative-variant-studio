@@ -9,12 +9,12 @@ function stubClient(inputs) {
   const calls = [];
   return {
     calls,
-    messages: {
-      create: async (params) => {
+    models: {
+      generateContent: async (params) => {
         calls.push(params);
         const next = inputs[Math.min(calls.length - 1, inputs.length - 1)];
         if (next instanceof Error) throw next;
-        return { content: [{ type: 'tool_use', name: 'submit_ideas', input: next }] };
+        return { functionCalls: [{ name: 'submit_ideas', args: next }] };
       },
     },
   };
@@ -28,16 +28,22 @@ test('valid tool response yields 10 hooks and 10 on-screen texts', async () => {
   assert.deepEqual(batch, good);
   assert.equal(client.calls.length, 1);
   assert.equal(client.calls[0].model, 'm');
-  assert.equal(client.calls[0].tool_choice.name, 'submit_ideas');
-  const schema = client.calls[0].tools[0].input_schema;
-  assert.equal(schema.properties.hooks.type, 'array');
-  assert.equal(schema.properties.on_screen_texts.items.type, 'string');
+  const { config } = client.calls[0];
+  assert.deepEqual(config.toolConfig.functionCallingConfig, {
+    mode: 'ANY',
+    allowedFunctionNames: ['submit_ideas'],
+  });
+  const declaration = config.tools[0].functionDeclarations[0];
+  assert.equal(declaration.name, 'submit_ideas');
+  assert.equal(declaration.parametersJsonSchema.properties.hooks.type, 'array');
+  assert.equal(declaration.parametersJsonSchema.properties.on_screen_texts.items.type, 'string');
+  assert.deepEqual(declaration.parametersJsonSchema.required, ['hooks', 'on_screen_texts']);
 });
 
 test('prompt contains the script and the length limits', async () => {
   const client = stubClient([good]);
   await generateBatch({ client, model: 'm', script: 'SCRIPT-BODY' });
-  const text = JSON.stringify(client.calls[0].system) + JSON.stringify(client.calls[0].messages);
+  const text = JSON.stringify(client.calls[0].config.systemInstruction) + JSON.stringify(client.calls[0].contents);
   assert.match(text, /SCRIPT-BODY/);
   assert.match(text, new RegExp(`${LIMITS.hookMaxWords} words`));
   assert.match(text, new RegExp(`${LIMITS.onScreenTextMaxWords} words`));

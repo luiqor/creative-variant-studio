@@ -14,7 +14,7 @@ test('serves the static page with a Generate button', async () => {
 
 const ten = (p) => Array.from({ length: 10 }, (_, i) => `${p} ${i}`);
 const stub = (input) => ({
-  messages: { create: async () => ({ content: [{ type: 'tool_use', name: 'submit_ideas', input }] }) },
+  models: { generateContent: async () => ({ functionCalls: [{ name: 'submit_ideas', args: input }] }) },
 });
 async function post(client, body) {
   const server = createApp({ client, model: 'm' }).listen(0);
@@ -38,10 +38,10 @@ test('POST /api/generate returns a batch', async () => {
 test('POST /api/more-like-this returns 10 cards of the chosen type using all card feedback', async () => {
   const calls = [];
   const client = {
-    messages: {
-      create: async (params) => {
+    models: {
+      generateContent: async (params) => {
         calls.push(params);
-        return { content: [{ type: 'tool_use', name: 'submit_ideas', input: { hooks: ten('n') } }] };
+        return { functionCalls: [{ name: 'submit_ideas', args: { hooks: ten('n') } }] };
       },
     },
   };
@@ -63,7 +63,7 @@ test('POST /api/more-like-this returns 10 cards of the chosen type using all car
   server.close();
   assert.equal(res.status, 200);
   assert.deepEqual(json, { hooks: ten('n') });
-  const prompt = calls[0].messages[0].content;
+  const prompt = calls[0].contents;
   for (const expected of ['Chosen hook', 'Bad hook', 'Some overlay', 'Humor', 'cheeky', 'Off-brand']) {
     assert.match(prompt, new RegExp(expected));
   }
