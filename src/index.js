@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { loadConfig } from './config.js';
 import { createApp } from './app.js';
 
@@ -10,6 +11,8 @@ const config = (() => {
   }
 })();
 
-createApp().listen(config.port, () => {
+const client = new Anthropic({ apiKey: config.apiKey });
+
+createApp({ client, model: config.model }).listen(config.port, () => {
   process.stdout.write(`Listening on http://localhost:${config.port}\n`);
 });
