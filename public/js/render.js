@@ -36,7 +36,10 @@ function renderGenerate(state) {
 
 function renderInputs(state) {
   return `<aside class="panel inputs">
-    <h1>Idea Generator</h1>
+    <div class="title-row">
+      <h1>Idea Generator</h1>
+      <button type="button" class="btn ghost small" data-action="new-script">New script</button>
+    </div>
     <label class="field-label" for="script">Winning script</label>
     <textarea id="script" data-field="script" rows="11" placeholder="Paste the winning script here">${escapeHtml(state.script)}</textarea>
     <span class="field-label">Idea types</span>

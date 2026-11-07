@@ -1,5 +1,6 @@
 import { renderPreviewBody, renderWorkspace } from './render.js';
 import { requestBatch, requestMore } from './api.js';
+import { createSession } from './session.js';
 import {
   addType,
   applyBatch,
@@ -7,11 +8,11 @@ import {
   canSubmitMore,
   closeMore,
   generateRequest,
-  initialState,
   dropIndex,
   keepIdea,
   moreRequest,
   moveKept,
+  newScript,
   openMore,
   rejectIdea,
   restoreIdea,
@@ -24,7 +25,8 @@ import {
 } from './workspace.js';
 
 const root = document.getElementById('app');
-let state = initialState();
+const session = createSession(window.localStorage);
+let state = session.load();
 
 function render() {
   const scrollTop = window.scrollY;
@@ -34,6 +36,7 @@ function render() {
 
 function update(next) {
   state = next;
+  session.save(state);
   render();
 }
 
@@ -53,7 +56,13 @@ function submitMore() {
     .catch((err) => update({ ...state, loading: false, error: err.message }));
 }
 
+function startNewScript() {
+  session.clear();
+  update(newScript());
+}
+
 const ACTIONS = {
+  'new-script': startNewScript,
   more: (el) => update(openMore(state, el.dataset.id)),
   'more-tag': (el) => update(toggleMoreTag(state, el.dataset.tag)),
   'more-close': () => update(closeMore(state)),
@@ -84,6 +93,7 @@ root.addEventListener('input', (event) => {
   }
   if (!field) return;
   state = { ...state, [field]: event.target.value };
+  session.save(state);
   const button = root.querySelector('[data-action="generate"]');
   button.disabled = !canGenerate(state);
 });

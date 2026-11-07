@@ -10,8 +10,8 @@ test('the page mounts the workspace and loads all its ES modules from the server
   const mainSource = await main.text();
   const stylesheet = await fetch(`${base}/styles.css`);
   const imported = [...mainSource.matchAll(/from '\.\/([^']+)'/g)].map(([, path]) => `/js/${path}`);
-  const expected = ['render.js', 'api.js', 'workspace.js'].map((name) => `/js/${name}`);
-  const transitive = [...expected, '/js/idea-types.js'];
+  const expected = ['render.js', 'api.js', 'workspace.js', 'session.js'].map((name) => `/js/${name}`);
+  const transitive = [...expected, '/js/idea-types.js', '/js/tags.js', '/js/safe-zone.js'];
   const statuses = await Promise.all(transitive.map((path) => fetch(`${base}${path}`).then((res) => res.status)));
   server.close();
 

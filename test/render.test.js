@@ -193,3 +193,7 @@ test('the More like this submit button is disabled while a request is running', 
   const html = renderWorkspace({ ...openMore(start, start.ideas[0].id), loading: true });
   assert.match(html, /data-action="more-submit" disabled/);
 });
+
+test('there is a New script button in the inputs pane', () => {
+  assert.match(renderWorkspace(ready), /<button[^>]*data-action="new-script"[^>]*>New script<\/button>/);
+});

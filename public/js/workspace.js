@@ -198,3 +198,7 @@ export function moreRequest(state) {
     count: state.count,
   };
 }
+
+export function newScript() {
+  return initialState();
+}
