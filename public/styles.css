@@ -9,3 +9,10 @@ button { margin-top: .5rem; padding: .5rem 1.25rem; font: inherit; }
 .safe-zone { width: 80%; max-height: 60%; overflow: hidden; border: 1px dashed rgba(255, 255, 255, .35); text-align: center; }
 .card-text { margin: 0; color: #fff; font-weight: 700; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
 .warning { margin: 0; font-size: .85rem; color: #92400e; background: #fef3c7; padding: .25rem .5rem; border-radius: 4px; }
+
+.actions, .liked-tags, .reject-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.reject-tags button { font-size: 0.8em; }
+button[aria-pressed="true"] { background: #cfe8ff; }
+.card[data-state="kept"] { outline: 2px solid #2e9e4f; }
+.card textarea { width: 100%; margin-top: 6px; }
+.kept, .rejected { margin-top: 16px; }
