@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import path from 'node:path';
 import { app, BrowserWindow, safeStorage } from 'electron';
 import { GoogleGenAI } from '@google/genai';
@@ -18,14 +17,15 @@ const WAIT_FOR_HEADING = `new Promise((resolve) => {
   }, 50);
   setTimeout(() => resolve(''), 5000);
 })`;
-const model = process.env.MODEL || 'gemini-3.5-flash-lite';
 
 app.whenReady().then(async () => {
+  if (!app.isPackaged) await import('dotenv/config');
+  const model = process.env.MODEL || 'gemini-3.5-flash-lite';
   const userData = app.getPath('userData');
   const tokens = createTokenService({
     store: createTokenStore({ safeStorage, file: path.join(userData, 'token.bin') }),
     createClient: (apiKey) => new GoogleGenAI({ apiKey }),
-    env: process.env,
+    env: app.isPackaged ? {} : process.env,
   });
   const server = await startServer({
     tokens,
