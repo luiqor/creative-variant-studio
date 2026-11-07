@@ -1,6 +1,7 @@
 import { createCards, keepCard, rejectCard, restoreCard, toggleLikedTag, setComment } from './cards.js';
 import { renderCards } from './render.js';
 import { requestBatch } from './api.js';
+import { createSession } from './session.js';
 import { setupExport } from './export-ui.js';
 import { trackAction, trackExport } from './action-events.js';
 
@@ -9,9 +10,22 @@ const generateButton = document.getElementById('generate');
 const errorBox = document.getElementById('error');
 const cardsRoot = document.getElementById('cards');
 
-const state = { cards: [], loading: false };
+const session = createSession(window.localStorage);
+const newScriptButton = document.getElementById('new-script');
+
+const state = { cards: session.load(), loading: false };
+
+newScriptButton.addEventListener('click', () => {
+  state.cards = [];
+  scriptInput.value = '';
+  showError('');
+  session.clear();
+  render();
+});
 
 function render() {
+  session.save(state.cards);
+  newScriptButton.disabled = state.loading;
   cardsRoot.innerHTML = renderCards(state.cards);
   generateButton.disabled = state.loading;
   generateButton.textContent = state.loading ? 'Generating...' : 'Generate';
@@ -48,6 +62,7 @@ cardsRoot.addEventListener('change', (event) => {
   if (!field) return;
   trackAction(state.cards, field.dataset.cardId, 'comment', null, field.value);
   state.cards = setComment(state.cards, field.dataset.cardId, field.value);
+  session.save(state.cards);
 });
 
 generateButton.addEventListener('click', () => {
